@@ -10,6 +10,7 @@ import type {
   SolidtimeTask,
   SolidtimeTag,
   SolidtimeMember,
+  SolidtimeClient,
 } from "../core/types.js";
 
 export function createDiscoverCommand(): Command {
@@ -157,6 +158,30 @@ export function createDiscoverCommand(): Command {
             name: m.name,
             email: m.email,
             role: m.role,
+          })),
+        );
+      } catch (err) {
+        exitWithError(err, true);
+      }
+    });
+
+  cmd
+    .command("clients")
+    .description("List clients as selectors")
+    .action(async () => {
+      try {
+        const config = loadConfig();
+        const client = createClient(config);
+        const org = requireActiveOrganization(config);
+
+        const res = await client.get<unknown>(`organizations/${org}/clients`);
+        const clients = unwrap<SolidtimeClient>(res);
+
+        printJson(
+          clients.map((c) => ({
+            id: c.id,
+            name: c.name,
+            is_archived: c.is_archived,
           })),
         );
       } catch (err) {

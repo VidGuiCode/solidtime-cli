@@ -4,44 +4,35 @@ import { printJson, printTable } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
 import { unwrap } from "../core/api-client.js";
-function formatDuration(seconds) {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    return `${h}h ${m}m`;
-}
-export function createTaskCommand() {
-    const cmd = new Command("task").description("Manage tasks");
+export function createClientCommand() {
+    const cmd = new Command("client").description("Manage clients");
     cmd
         .command("list")
-        .description("List all tasks")
+        .description("List all clients")
         .option("--json", "Output raw JSON")
-        .option("--project <id>", "Filter by project ID")
-        .option("--done", "Include completed tasks")
+        .option("--archived", "Include archived clients")
         .action(async (opts) => {
         try {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
             const params = [];
-            if (opts.project)
-                params.push(`project_id=${opts.project}`);
-            if (!opts.done)
-                params.push("done=false");
-            const path = `organizations/${org}/tasks` +
+            if (opts.archived)
+                params.push("filter[archived]=true");
+            const path = `organizations/${org}/clients` +
                 (params.length > 0 ? `?${params.join("&")}` : "");
             const res = await client.get(path);
-            const tasks = unwrap(res);
+            const clients = unwrap(res);
             if (opts.json) {
-                printJson(tasks);
+                printJson(clients);
                 return;
             }
-            const rows = tasks.map((t) => [
-                t.name,
-                t.is_done ? "done" : "open",
-                formatDuration(t.spent_time),
-                t.project_id ?? "-",
+            const rows = clients.map((c) => [
+                c.name,
+                c.is_archived ? "archived" : "",
+                c.id,
             ]);
-            printTable(rows, ["Name", "Status", "Tracked", "Project"]);
+            printTable(rows, ["Name", "Status", "ID"]);
         }
         catch (err) {
             exitWithError(err, Boolean(opts.json));
@@ -49,29 +40,25 @@ export function createTaskCommand() {
     });
     cmd
         .command("create")
-        .description("Create a new task")
-        .requiredOption("--name <name>", "Task name")
-        .requiredOption("--project <id>", "Project ID")
+        .description("Create a new client")
+        .requiredOption("--name <name>", "Client name")
         .option("--json", "Output raw JSON")
         .action(async (opts) => {
         try {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
-            const body = {
-                name: opts.name,
-                project_id: opts.project,
-            };
+            const body = { name: opts.name };
             if (isDryRunEnabled()) {
-                printJson({ dryRun: true, action: "task.create", body });
+                printJson({ dryRun: true, action: "client.create", body });
                 return;
             }
-            const res = await client.post(`organizations/${org}/tasks`, body);
+            const res = await client.post(`organizations/${org}/clients`, body);
             if (opts.json) {
                 printJson(res.data);
                 return;
             }
-            console.log(`Created task: ${res.data.name} (${res.data.id})`);
+            console.log(`Created client: ${res.data.name} (${res.data.id})`);
         }
         catch (err) {
             exitWithError(err, Boolean(opts.json));
@@ -79,11 +66,11 @@ export function createTaskCommand() {
     });
     cmd
         .command("update")
-        .description("Update a task")
-        .argument("<id>", "Task ID")
+        .description("Update a client")
+        .argument("<id>", "Client ID")
         .option("--name <name>", "New name")
-        .option("--done", "Mark as done")
-        .option("--no-done", "Mark as not done")
+        .option("--archived", "Mark as archived")
+        .option("--no-archived", "Mark as not archived")
         .option("--json", "Output raw JSON")
         .action(async (id, opts) => {
         try {
@@ -93,18 +80,18 @@ export function createTaskCommand() {
             const body = {};
             if (opts.name)
                 body.name = opts.name;
-            if (opts.done !== undefined)
-                body.is_done = opts.done;
+            if (opts.archived !== undefined)
+                body.is_archived = opts.archived;
             if (isDryRunEnabled()) {
-                printJson({ dryRun: true, action: "task.update", id, body });
+                printJson({ dryRun: true, action: "client.update", id, body });
                 return;
             }
-            const res = await client.put(`organizations/${org}/tasks/${id}`, body);
+            const res = await client.put(`organizations/${org}/clients/${id}`, body);
             if (opts.json) {
                 printJson(res.data);
                 return;
             }
-            console.log(`Updated task: ${res.data.name}`);
+            console.log(`Updated client: ${res.data.name}`);
         }
         catch (err) {
             exitWithError(err, Boolean(opts.json));
@@ -112,8 +99,8 @@ export function createTaskCommand() {
     });
     cmd
         .command("delete")
-        .description("Delete a task")
-        .argument("<id>", "Task ID")
+        .description("Delete a client")
+        .argument("<id>", "Client ID")
         .option("--json", "Output raw JSON")
         .action(async (id, opts) => {
         try {
@@ -121,15 +108,15 @@ export function createTaskCommand() {
             const client = createClient(config);
             const org = requireActiveOrganization(config);
             if (isDryRunEnabled()) {
-                printJson({ dryRun: true, action: "task.delete", id });
+                printJson({ dryRun: true, action: "client.delete", id });
                 return;
             }
-            await client.delete(`organizations/${org}/tasks/${id}`);
+            await client.delete(`organizations/${org}/clients/${id}`);
             if (opts.json) {
                 printJson({ success: true, action: "delete", id });
                 return;
             }
-            console.log(`Deleted task: ${id}`);
+            console.log(`Deleted client: ${id}`);
         }
         catch (err) {
             exitWithError(err, Boolean(opts.json));
@@ -137,4 +124,4 @@ export function createTaskCommand() {
     });
     return cmd;
 }
-//# sourceMappingURL=task.js.map
+//# sourceMappingURL=client.js.map

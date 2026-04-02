@@ -31,10 +31,14 @@ export declare class SolidtimeApiClient {
     get<T>(path: string): Promise<T>;
     post<T>(path: string, body: unknown): Promise<T>;
     put<T>(path: string, body: unknown): Promise<T>;
+    patch<T>(path: string, body: unknown): Promise<T>;
     delete(path: string): Promise<void>;
+    deleteWithBody<T>(path: string, body: unknown): Promise<T>;
 }
 /** Unwrap Solidtime's { data: T[] } paginated response. */
 export declare function unwrap<T>(res: unknown): T[];
-/** Fetch all pages of a paginated Solidtime endpoint. */
+/** Fetch all items from an offset/limit endpoint (time entries). */
+export declare function fetchAllOffsetLimit<T>(client: SolidtimeApiClient, path: string, batchSize?: number): Promise<T[]>;
+/** Fetch all pages of a page-based paginated endpoint (projects, tasks, tags, etc.). */
 export declare function fetchAll<T>(client: SolidtimeApiClient, path: string): Promise<T[]>;
 //# sourceMappingURL=api-client.d.ts.map

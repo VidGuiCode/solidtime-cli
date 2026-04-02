@@ -64,15 +64,18 @@ export function createLoginCommand() {
             const memberships = membershipsRes.data;
             let organizationId;
             let organizationName;
+            let memberId;
             if (memberships.length === 1) {
                 organizationId = memberships[0].organization.id;
                 organizationName = memberships[0].organization.name;
+                memberId = memberships[0].id;
                 console.log(`Found organization: ${organizationName}`);
             }
             else if (memberships.length > 1) {
                 if (opts.url && opts.token) {
                     organizationId = memberships[0].organization.id;
                     organizationName = memberships[0].organization.name;
+                    memberId = memberships[0].id;
                     console.log(`Using organization: ${organizationName}`);
                 }
                 else {
@@ -80,6 +83,7 @@ export function createLoginCommand() {
                     const idx = await pickOne("Select organization", memberships.map((m) => `${m.organization.name} (${m.role})`));
                     organizationId = memberships[idx].organization.id;
                     organizationName = memberships[idx].organization.name;
+                    memberId = memberships[idx].id;
                 }
             }
             else {
@@ -94,6 +98,7 @@ export function createLoginCommand() {
                 baseUrl,
                 token,
                 defaultOrganization: organizationId,
+                memberId,
             };
             const existing = config.profiles.findIndex((p) => p.name === accountName);
             if (existing >= 0) {

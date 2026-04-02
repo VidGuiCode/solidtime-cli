@@ -1,63 +1,147 @@
 # solidtime-cli
 
-Unofficial CLI for [Solidtime](https://www.solidtime.io/) — open-source time tracking.
+Unofficial command-line client for [Solidtime](https://www.solidtime.io/) — open-source time tracking.
+
+Works with both self-hosted Solidtime instances and [Solidtime Cloud](https://app.solidtime.io). Designed for humans in a terminal and AI agents that can run shell commands.
 
 ## Install
 
 ```bash
-npm install -g solidtime-cli
+npm install -g https://github.com/VidGuiCode/solidtime-cli/releases/download/v0.1.0/solidtime-cli-0.1.0.tgz
 ```
 
-Requires Node.js 20+.
+Requires **Node.js 20+**. Works on Windows, macOS, and Linux.
 
 ## Quick Start
 
 ```bash
+# Connect to your Solidtime instance
 solidtime login
+
+# Check your context
 solidtime where
-solidtime project list
-solidtime time-entry list
+
+# Start a timer
+solidtime te start --description "Working on feature X"
+
+# Check the running timer
+solidtime te active
+
+# Stop it
+solidtime te stop <id>
+
+# List your time entries
+solidtime te list --start 2026-04-01T00:00:00Z --limit 10
 ```
 
 ## Commands
+
+### Auth & Context
 
 | Command | Description |
 |---------|-------------|
 | `login` | Connect to a Solidtime instance |
 | `logout` | Remove saved credentials |
-| `where` | Show current context |
-| `project list\|create\|update` | Manage projects |
-| `time-entry list\|start\|stop\|create\|update\|delete` | Manage time entries |
+| `where` | Show current account, organization, and user |
+| `account list\|use\|show\|remove` | Manage saved accounts |
+| `organization list\|use\|show\|update` | Switch and manage organizations |
+
+### Time Entries
+
+| Command | Description |
+|---------|-------------|
+| `time-entry list` | List time entries with filters |
+| `time-entry start` | Start a timer |
+| `time-entry stop <id>` | Stop a running timer |
+| `time-entry active` | Show the currently running timer |
+| `time-entry create` | Create a completed time entry |
+| `time-entry update <id>` | Update a time entry |
+| `time-entry delete <id>` | Delete a time entry |
+| `time-entry bulk-update` | Update multiple entries at once |
+| `time-entry bulk-delete` | Delete multiple entries at once |
+| `time-entry aggregate` | Aggregate entries with grouping |
+
+#### Time Entry Filters
+
+```bash
+solidtime te list --projects <id1> <id2>     # filter by projects
+solidtime te list --start 2026-04-01T00:00:00Z --end 2026-04-02T23:59:59Z
+solidtime te list --active                    # only running timers
+solidtime te list --billable                  # only billable entries
+solidtime te list --member <id>               # filter by member
+solidtime te list --tags <id1> <id2>          # filter by tags
+solidtime te list --limit 100 --offset 50     # pagination
+```
+
+### Resources
+
+| Command | Description |
+|---------|-------------|
+| `project list\|show\|create\|update\|delete` | Manage projects |
 | `task list\|create\|update\|delete` | Manage tasks |
 | `tag list\|create\|update\|delete` | Manage tags |
-| `member list` | List organization members |
+| `client list\|create\|update\|delete` | Manage clients |
+| `member list\|update` | List and update members |
+| `project-member list\|add\|update\|remove` | Manage project member assignments |
+| `invitation list\|create\|resend\|delete` | Manage organization invitations |
+
+### AI & Automation
+
+| Command | Description |
+|---------|-------------|
+| `discover context` | Full context dump (account, org, user) |
+| `discover projects\|tasks\|tags\|members\|clients` | List resources as ID selectors |
+| `profile` | Show current user |
+
+### Utility
+
+| Command | Description |
+|---------|-------------|
+| `upgrade` | Check for updates and self-upgrade |
+| `completion bash\|zsh\|fish` | Generate shell completions |
 
 ### Aliases
 
-- `te` → `time-entry`
+| Alias | Command |
+|-------|---------|
+| `te` | `time-entry` |
+| `org` | `organization` |
+| `pm` | `project-member` |
+| `invite` | `invitation` |
 
-### Global Flags
+## Global Flags
 
 | Flag | Description |
 |------|-------------|
-| `--json` | Output raw JSON |
-| `--compact` | Compact JSON (for AI/agents) |
-| `--dry-run` | Validate without sending |
-| `--no-interactive` | Fail instead of prompting |
+| `--json` | Machine-readable JSON output |
+| `--compact` | Compact JSON without indentation (for AI/agents) |
+| `--dry-run` | Validate and preview without sending |
+| `--no-interactive` | Fail instead of prompting for input |
 
 ## Environment Variables
 
+For CI/automation, you can skip the config file entirely:
+
 | Variable | Description |
 |----------|-------------|
-| `SOLIDTIME_BASE_URL` | Override instance URL |
-| `SOLIDTIME_API_TOKEN` | Override API token |
-| `SOLIDTIME_ORGANIZATION` | Override organization ID |
-| `SOLIDTIME_CONFIG` | Custom config file path |
+| `SOLIDTIME_BASE_URL` | Solidtime instance URL |
+| `SOLIDTIME_API_TOKEN` | API token (Bearer JWT) |
+| `SOLIDTIME_ORGANIZATION` | Active organization ID |
+| `SOLIDTIME_MEMBER_ID` | Your membership ID in the org |
+| `SOLIDTIME_CONFIG` | Path to custom config file |
+
+When both `SOLIDTIME_BASE_URL` and `SOLIDTIME_API_TOKEN` are set, no config file is needed.
 
 ## Configuration
 
-Config is stored at `~/.solidtime-cli/config.json`.
+Config is stored at `~/.solidtime-cli/config.json`. Supports multiple accounts — switch between them with `solidtime account use <name>`.
+
+## Non-Interactive Login
+
+```bash
+solidtime login --url https://timesheet.example.com --token <jwt>
+```
 
 ## License
 
-MIT
+[MIT](LICENSE)

@@ -1,7 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
-import type { SolidtimeConfig, SolidtimeAccount } from "./types.js";
+import type { SolidtimeConfig, SolidtimeAccount, SolidtimeMembership } from "./types.js";
 import { SolidtimeApiClient } from "./api-client.js";
 import { printError } from "./output.js";
 
@@ -61,6 +61,40 @@ export function requireActiveOrganization(config: SolidtimeConfig): string {
     process.exit(1);
   }
   return org;
+}
+
+export function requireActiveMemberId(config: SolidtimeConfig): string {
+  const envMember = process.env.SOLIDTIME_MEMBER_ID;
+  if (envMember) return envMember;
+
+  const account = getActiveAccount(config);
+  if (account?.memberId) return account.memberId;
+
+  printError("No member ID found. Run: solidtime login");
+  process.exit(1);
+}
+
+export async function resolveAndPersistMemberId(
+  client: SolidtimeApiClient,
+  config: SolidtimeConfig,
+  orgId: string,
+): Promise<string> {
+  const account = getActiveAccount(config);
+  if (account?.memberId) return account.memberId;
+
+  const res = await client.get<{ data: SolidtimeMembership[] }>("users/me/memberships");
+  const match = res.data.find((m) => m.organization.id === orgId);
+  if (!match) {
+    printError("Could not resolve member ID for active organization. Run: solidtime login");
+    process.exit(1);
+  }
+
+  if (account) {
+    account.memberId = match.id;
+    saveConfig(config);
+  }
+
+  return match.id;
 }
 
 export function createClient(config: SolidtimeConfig): SolidtimeApiClient {

@@ -3,6 +3,7 @@ export interface SolidtimeAccount {
     baseUrl: string;
     token: string;
     defaultOrganization?: string;
+    memberId?: string;
 }
 export interface SolidtimeContext {
     activeProfile?: string;
@@ -28,7 +29,18 @@ export interface SolidtimeMembership {
 export interface SolidtimeOrganization {
     id: string;
     name: string;
+    is_personal: boolean;
+    billable_rate: number | null;
+    employees_can_see_billable_rates: boolean;
+    employees_can_manage_tasks: boolean;
+    prevent_overlapping_time_entries: boolean;
     currency: string;
+    currency_symbol: string;
+    number_format: string;
+    currency_format: string;
+    date_format: string;
+    interval_format: string;
+    time_format: string;
 }
 export interface SolidtimeMember {
     id: string;
@@ -86,6 +98,21 @@ export interface SolidtimeTimeEntry {
     user_id: string;
     tags: string[];
     billable: boolean;
+}
+export interface SolidtimeInvitation {
+    id: string;
+    email: string;
+    role: string;
+}
+export interface SolidtimeProjectMember {
+    id: string;
+    member_id: string;
+    billable_rate: number | null;
+    project_id: string;
+}
+export interface SolidtimeBulkResult {
+    success: string[];
+    error: string[];
 }
 export interface SolidtimePaginatedResponse<T> {
     data: T[];

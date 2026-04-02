@@ -1,9 +1,14 @@
 import { Command } from "commander";
-import { createClient, loadConfig, requireActiveOrganization } from "../core/config-store.js";
+import {
+  createClient,
+  loadConfig,
+  requireActiveOrganization,
+  requireActiveMemberId,
+} from "../core/config-store.js";
 import { printJson, printTable } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
-import { unwrap } from "../core/api-client.js";
+import { unwrap, SolidtimeApiError } from "../core/api-client.js";
 import type { SolidtimeTimeEntry } from "../core/types.js";
 
 function formatDuration(seconds: number): string {
@@ -25,24 +30,47 @@ export function createTimeEntryCommand(): Command {
     .command("list")
     .description("List time entries")
     .option("--json", "Output raw JSON")
-    .option("--project <id>", "Filter by project ID")
-    .option("--limit <n>", "Limit results", "20")
+    .option("--member <id>", "Filter by member ID")
+    .option("--project <id>", "Filter by single project ID")
+    .option("--projects <ids...>", "Filter by project IDs")
+    .option("--clients <ids...>", "Filter by client IDs")
+    .option("--tasks <ids...>", "Filter by task IDs")
+    .option("--tags <ids...>", "Filter by tag IDs")
+    .option("--start <datetime>", "Filter entries after this time (ISO 8601)")
+    .option("--end <datetime>", "Filter entries before this time (ISO 8601)")
+    .option("--active", "Only active (running) entries")
+    .option("--billable", "Only billable entries")
+    .option("--no-billable", "Only non-billable entries")
+    .option("--limit <n>", "Limit results (1-500)", "50")
+    .option("--offset <n>", "Skip N results")
+    .option("--only-full-dates", "Only complete date ranges")
     .action(async (opts) => {
       try {
         const config = loadConfig();
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        let path = `organizations/${org}/time-entries`;
         const params: string[] = [];
-        if (opts.project) params.push(`project_id=${opts.project}`);
-        if (params.length > 0) path += `?${params.join("&")}`;
+        if (opts.member) params.push(`member_id=${opts.member}`);
+        if (opts.project) params.push(`project_ids[]=${opts.project}`);
+        if (opts.projects) for (const id of opts.projects) params.push(`project_ids[]=${id}`);
+        if (opts.clients) for (const id of opts.clients) params.push(`client_ids[]=${id}`);
+        if (opts.tasks) for (const id of opts.tasks) params.push(`task_ids[]=${id}`);
+        if (opts.tags) for (const id of opts.tags) params.push(`tag_ids[]=${id}`);
+        if (opts.start) params.push(`start=${opts.start}`);
+        if (opts.end) params.push(`end=${opts.end}`);
+        if (opts.active) params.push("active=true");
+        if (opts.billable !== undefined) params.push(`billable=${opts.billable}`);
+        if (opts.limit) params.push(`limit=${opts.limit}`);
+        if (opts.offset) params.push(`offset=${opts.offset}`);
+        if (opts.onlyFullDates) params.push("only_full_dates=true");
+
+        const path =
+          `organizations/${org}/time-entries` +
+          (params.length > 0 ? `?${params.join("&")}` : "");
 
         const res = await client.get<unknown>(path);
-        let entries = unwrap<SolidtimeTimeEntry>(res);
-
-        const limit = parseInt(opts.limit, 10);
-        if (limit > 0) entries = entries.slice(0, limit);
+        const entries = unwrap<SolidtimeTimeEntry>(res);
 
         if (opts.json) {
           printJson(entries);
@@ -76,8 +104,10 @@ export function createTimeEntryCommand(): Command {
         const config = loadConfig();
         const client = createClient(config);
         const org = requireActiveOrganization(config);
+        const memberId = requireActiveMemberId(config);
 
         const body = {
+          member_id: memberId,
           description: opts.description,
           project_id: opts.project ?? null,
           task_id: opts.task ?? null,
@@ -118,8 +148,10 @@ export function createTimeEntryCommand(): Command {
         const config = loadConfig();
         const client = createClient(config);
         const org = requireActiveOrganization(config);
+        const memberId = requireActiveMemberId(config);
 
         const body = {
+          member_id: memberId,
           end: new Date().toISOString(),
         };
 
@@ -160,8 +192,10 @@ export function createTimeEntryCommand(): Command {
         const config = loadConfig();
         const client = createClient(config);
         const org = requireActiveOrganization(config);
+        const memberId = requireActiveMemberId(config);
 
         const body = {
+          member_id: memberId,
           description: opts.description,
           start: opts.start,
           end: opts.end,
@@ -210,8 +244,9 @@ export function createTimeEntryCommand(): Command {
         const config = loadConfig();
         const client = createClient(config);
         const org = requireActiveOrganization(config);
+        const memberId = requireActiveMemberId(config);
 
-        const body: Record<string, unknown> = {};
+        const body: Record<string, unknown> = { member_id: memberId };
         if (opts.description) body.description = opts.description;
         if (opts.project) body.project_id = opts.project;
         if (opts.task) body.task_id = opts.task;
@@ -265,6 +300,176 @@ export function createTimeEntryCommand(): Command {
         }
 
         console.log(`Deleted time entry: ${id}`);
+      } catch (err) {
+        exitWithError(err, Boolean(opts.json));
+      }
+    });
+
+  cmd
+    .command("active")
+    .description("Show the currently running timer")
+    .option("--json", "Output raw JSON")
+    .action(async (opts) => {
+      try {
+        const config = loadConfig();
+        const client = createClient(config);
+
+        const res = await client.get<{ data: SolidtimeTimeEntry }>(
+          "users/me/time-entries/active",
+        );
+        const entry = res.data;
+
+        if (opts.json) {
+          printJson(entry);
+          return;
+        }
+
+        console.log(`Running: ${entry.description || "(no description)"}`);
+        console.log(`  Started: ${formatDate(entry.start)}`);
+        console.log(`  ID:      ${entry.id}`);
+        if (entry.project_id) console.log(`  Project: ${entry.project_id}`);
+      } catch (err) {
+        if (err instanceof SolidtimeApiError && err.status === 404) {
+          if (opts.json) {
+            printJson({ active: false });
+            return;
+          }
+          console.log("No timer running.");
+          return;
+        }
+        exitWithError(err, Boolean(opts.json));
+      }
+    });
+
+  cmd
+    .command("bulk-update")
+    .description("Update multiple time entries at once")
+    .requiredOption("--ids <ids...>", "Time entry IDs")
+    .option("--description <text>", "New description")
+    .option("--project <id>", "Project ID")
+    .option("--task <id>", "Task ID")
+    .option("--member <id>", "Member ID")
+    .option("--billable", "Mark as billable")
+    .option("--no-billable", "Mark as not billable")
+    .option("--json", "Output raw JSON")
+    .action(async (opts) => {
+      try {
+        const config = loadConfig();
+        const client = createClient(config);
+        const org = requireActiveOrganization(config);
+
+        const changes: Record<string, unknown> = {};
+        if (opts.description) changes.description = opts.description;
+        if (opts.project) changes.project_id = opts.project;
+        if (opts.task) changes.task_id = opts.task;
+        if (opts.member) changes.member_id = opts.member;
+        if (opts.billable !== undefined) changes.billable = opts.billable;
+
+        const body = { ids: opts.ids, changes };
+
+        if (isDryRunEnabled()) {
+          printJson({ dryRun: true, action: "time-entry.bulk-update", body });
+          return;
+        }
+
+        const res = await client.patch<{ success: string[]; error: string[] }>(
+          `organizations/${org}/time-entries`,
+          body,
+        );
+
+        if (opts.json) {
+          printJson(res);
+          return;
+        }
+
+        console.log(`Updated: ${res.success.length} entries`);
+        if (res.error.length > 0) {
+          console.log(`Failed: ${res.error.length} entries`);
+        }
+      } catch (err) {
+        exitWithError(err, Boolean(opts.json));
+      }
+    });
+
+  cmd
+    .command("bulk-delete")
+    .description("Delete multiple time entries at once")
+    .requiredOption("--ids <ids...>", "Time entry IDs")
+    .option("--json", "Output raw JSON")
+    .action(async (opts) => {
+      try {
+        const config = loadConfig();
+        const client = createClient(config);
+        const org = requireActiveOrganization(config);
+
+        const body = { ids: opts.ids };
+
+        if (isDryRunEnabled()) {
+          printJson({ dryRun: true, action: "time-entry.bulk-delete", body });
+          return;
+        }
+
+        const res = await client.deleteWithBody<{ success: string[]; error: string[] }>(
+          `organizations/${org}/time-entries`,
+          body,
+        );
+
+        if (opts.json) {
+          printJson(res);
+          return;
+        }
+
+        console.log(`Deleted: ${res.success.length} entries`);
+        if (res.error.length > 0) {
+          console.log(`Failed: ${res.error.length} entries`);
+        }
+      } catch (err) {
+        exitWithError(err, Boolean(opts.json));
+      }
+    });
+
+  cmd
+    .command("aggregate")
+    .description("Aggregate time entries with grouping")
+    .requiredOption(
+      "--group <type>",
+      "Group by: day, week, month, year, user, project, task, client, billable, description, tag",
+    )
+    .option("--sub-group <type>", "Secondary grouping (same options as --group)")
+    .option("--member <id>", "Filter by member ID")
+    .option("--projects <ids...>", "Filter by project IDs")
+    .option("--clients <ids...>", "Filter by client IDs")
+    .option("--tasks <ids...>", "Filter by task IDs")
+    .option("--tags <ids...>", "Filter by tag IDs")
+    .option("--start <datetime>", "Filter entries after this time (ISO 8601)")
+    .option("--end <datetime>", "Filter entries before this time (ISO 8601)")
+    .option("--billable", "Only billable entries")
+    .option("--no-billable", "Only non-billable entries")
+    .option("--fill-gaps", "Fill gaps in time-based groups")
+    .option("--json", "Output raw JSON")
+    .action(async (opts) => {
+      try {
+        const config = loadConfig();
+        const client = createClient(config);
+        const org = requireActiveOrganization(config);
+
+        const params: string[] = [];
+        params.push(`group=${opts.group}`);
+        if (opts.subGroup) params.push(`sub_group=${opts.subGroup}`);
+        if (opts.member) params.push(`member_id=${opts.member}`);
+        if (opts.projects) for (const id of opts.projects) params.push(`project_ids[]=${id}`);
+        if (opts.clients) for (const id of opts.clients) params.push(`client_ids[]=${id}`);
+        if (opts.tasks) for (const id of opts.tasks) params.push(`task_ids[]=${id}`);
+        if (opts.tags) for (const id of opts.tags) params.push(`tag_ids[]=${id}`);
+        if (opts.start) params.push(`start=${opts.start}`);
+        if (opts.end) params.push(`end=${opts.end}`);
+        if (opts.billable !== undefined) params.push(`billable=${opts.billable}`);
+        if (opts.fillGaps) params.push("fill_gaps_in_time_groups=true");
+
+        const path = `organizations/${org}/time-entries/aggregate?${params.join("&")}`;
+        const res = await client.get<unknown>(path);
+
+        printJson(res);
       } catch (err) {
         exitWithError(err, Boolean(opts.json));
       }

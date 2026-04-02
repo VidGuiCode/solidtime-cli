@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { createClient, loadConfig, requireActiveOrganization } from "../core/config-store.js";
-import { printJson, printTable } from "../core/output.js";
+import { printInfo, printJson, printTable } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
 import { unwrap } from "../core/api-client.js";
@@ -26,12 +26,15 @@ export function createProjectCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const res = await client.get<unknown>(`organizations/${org}/projects`);
-        let projects = unwrap<SolidtimeProject>(res);
+        const params: string[] = [];
+        if (opts.archived) params.push("filter[archived]=true");
 
-        if (!opts.archived) {
-          projects = projects.filter((p) => !p.is_archived);
-        }
+        const path =
+          `organizations/${org}/projects` +
+          (params.length > 0 ? `?${params.join("&")}` : "");
+
+        const res = await client.get<unknown>(path);
+        const projects = unwrap<SolidtimeProject>(res);
 
         if (opts.json) {
           printJson(projects);
@@ -129,6 +132,69 @@ export function createProjectCommand(): Command {
         }
 
         console.log(`Updated project: ${res.data.name}`);
+      } catch (err) {
+        exitWithError(err, Boolean(opts.json));
+      }
+    });
+
+  cmd
+    .command("show")
+    .description("Show a single project")
+    .argument("<id>", "Project ID")
+    .option("--json", "Output raw JSON")
+    .action(async (id, opts) => {
+      try {
+        const config = loadConfig();
+        const client = createClient(config);
+        const org = requireActiveOrganization(config);
+
+        const res = await client.get<{ data: SolidtimeProject }>(
+          `organizations/${org}/projects/${id}`,
+        );
+        const project = res.data;
+
+        if (opts.json) {
+          printJson(project);
+          return;
+        }
+
+        printInfo(`Name:      ${project.name}`);
+        printInfo(`ID:        ${project.id}`);
+        printInfo(`Color:     ${project.color}`);
+        printInfo(`Billable:  ${project.is_billable ? "yes" : "no"}`);
+        printInfo(`Archived:  ${project.is_archived ? "yes" : "no"}`);
+        printInfo(`Public:    ${project.is_public ? "yes" : "no"}`);
+        printInfo(`Tracked:   ${formatDuration(project.spent_time)}`);
+        if (project.client_id) printInfo(`Client:    ${project.client_id}`);
+      } catch (err) {
+        exitWithError(err, Boolean(opts.json));
+      }
+    });
+
+  cmd
+    .command("delete")
+    .description("Delete a project")
+    .argument("<id>", "Project ID")
+    .option("--json", "Output raw JSON")
+    .action(async (id, opts) => {
+      try {
+        const config = loadConfig();
+        const client = createClient(config);
+        const org = requireActiveOrganization(config);
+
+        if (isDryRunEnabled()) {
+          printJson({ dryRun: true, action: "project.delete", id });
+          return;
+        }
+
+        await client.delete(`organizations/${org}/projects/${id}`);
+
+        if (opts.json) {
+          printJson({ success: true, action: "delete", id });
+          return;
+        }
+
+        console.log(`Deleted project: ${id}`);
       } catch (err) {
         exitWithError(err, Boolean(opts.json));
       }

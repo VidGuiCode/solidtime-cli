@@ -207,6 +207,21 @@ export class SolidtimeApiClient {
     return res.json() as Promise<T>;
   }
 
+  async patch<T>(path: string, body: unknown): Promise<T> {
+    const res = await this.fetchWithRetry(path, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new SolidtimeApiError(res.status, errorText, "PATCH", path, {
+        request: body,
+        response: errorText,
+      });
+    }
+    return res.json() as Promise<T>;
+  }
+
   async delete(path: string): Promise<void> {
     const res = await this.fetchWithRetry(path, {
       method: "DELETE",
@@ -215,6 +230,21 @@ export class SolidtimeApiClient {
       const errorText = await res.text();
       throw new SolidtimeApiError(res.status, errorText, "DELETE", path, { response: errorText });
     }
+  }
+
+  async deleteWithBody<T>(path: string, body: unknown): Promise<T> {
+    const res = await this.fetchWithRetry(path, {
+      method: "DELETE",
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new SolidtimeApiError(res.status, errorText, "DELETE", path, {
+        request: body,
+        response: errorText,
+      });
+    }
+    return res.json() as Promise<T>;
   }
 }
 
@@ -227,7 +257,29 @@ export function unwrap<T>(res: unknown): T[] {
   return [];
 }
 
-/** Fetch all pages of a paginated Solidtime endpoint. */
+/** Fetch all items from an offset/limit endpoint (time entries). */
+export async function fetchAllOffsetLimit<T>(
+  client: SolidtimeApiClient,
+  path: string,
+  batchSize = 500,
+): Promise<T[]> {
+  const sep = path.includes("?") ? "&" : "?";
+  let offset = 0;
+  const results: T[] = [];
+
+  while (true) {
+    const res = await client.get<unknown>(`${path}${sep}limit=${batchSize}&offset=${offset}`);
+    const page = unwrap<T>(res);
+    results.push(...page);
+
+    if (page.length < batchSize) break;
+    offset += page.length;
+  }
+
+  return results;
+}
+
+/** Fetch all pages of a page-based paginated endpoint (projects, tasks, tags, etc.). */
 export async function fetchAll<T>(client: SolidtimeApiClient, path: string): Promise<T[]> {
   const sep = path.includes("?") ? "&" : "?";
   let page = 1;

@@ -54,6 +54,32 @@ export function requireActiveOrganization(config) {
     }
     return org;
 }
+export function requireActiveMemberId(config) {
+    const envMember = process.env.SOLIDTIME_MEMBER_ID;
+    if (envMember)
+        return envMember;
+    const account = getActiveAccount(config);
+    if (account?.memberId)
+        return account.memberId;
+    printError("No member ID found. Run: solidtime login");
+    process.exit(1);
+}
+export async function resolveAndPersistMemberId(client, config, orgId) {
+    const account = getActiveAccount(config);
+    if (account?.memberId)
+        return account.memberId;
+    const res = await client.get("users/me/memberships");
+    const match = res.data.find((m) => m.organization.id === orgId);
+    if (!match) {
+        printError("Could not resolve member ID for active organization. Run: solidtime login");
+        process.exit(1);
+    }
+    if (account) {
+        account.memberId = match.id;
+        saveConfig(config);
+    }
+    return match.id;
+}
 export function createClient(config) {
     const envUrl = process.env.SOLIDTIME_BASE_URL;
     const envToken = process.env.SOLIDTIME_API_TOKEN;

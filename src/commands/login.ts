@@ -74,15 +74,18 @@ export function createLoginCommand(): Command {
 
         let organizationId: string;
         let organizationName: string;
+        let memberId: string;
 
         if (memberships.length === 1) {
           organizationId = memberships[0].organization.id;
           organizationName = memberships[0].organization.name;
+          memberId = memberships[0].id;
           console.log(`Found organization: ${organizationName}`);
         } else if (memberships.length > 1) {
           if (opts.url && opts.token) {
             organizationId = memberships[0].organization.id;
             organizationName = memberships[0].organization.name;
+            memberId = memberships[0].id;
             console.log(`Using organization: ${organizationName}`);
           } else {
             console.log("Multiple organizations found:");
@@ -92,6 +95,7 @@ export function createLoginCommand(): Command {
             );
             organizationId = memberships[idx].organization.id;
             organizationName = memberships[idx].organization.name;
+            memberId = memberships[idx].id;
           }
         } else {
           throw new ValidationError("No organizations found for this account.");
@@ -107,6 +111,7 @@ export function createLoginCommand(): Command {
           baseUrl,
           token,
           defaultOrganization: organizationId,
+          memberId,
         };
 
         const existing = config.profiles.findIndex((p) => p.name === accountName);
