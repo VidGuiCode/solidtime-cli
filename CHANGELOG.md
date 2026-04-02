@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.1
+
+Patch release: agent-reported friction fixes.
+
+### Fixed
+
+- **UTC datetime normalization** — `--start` and `--end` options now accept any ISO 8601 datetime (with timezone offsets like `+02:00`) and automatically convert to UTC before sending to the API
+- **Timer timestamps** — Milliseconds stripped from auto-generated timestamps to match API format
+
+### Improved
+
+- **Help text for array flags** — `--tags`, `--projects`, `--clients`, `--tasks`, `--ids` now show `(space-separated)` in descriptions
+- **Help text for datetime flags** — All `--start` and `--end` options now show example formats
+
+### Added
+
+- **`discover all`** — Single command returning full context (account, org, user) plus all resource lists (projects, tasks, tags, members, clients) in one JSON response
+
 ## 0.1.0
 
 Initial release.

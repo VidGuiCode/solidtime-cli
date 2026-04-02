@@ -89,7 +89,8 @@ solidtime te list --limit 100 --offset 50     # pagination
 
 | Command | Description |
 |---------|-------------|
-| `discover context` | Full context dump (account, org, user) |
+| `discover all` | Full context dump with all resources (one call) |
+| `discover context` | Account, org, user context |
 | `discover projects\|tasks\|tags\|members\|clients` | List resources as ID selectors |
 | `profile` | Show current user |
 

@@ -8,6 +8,7 @@ import {
 import { printJson, printTable } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
+import { normalizeDateTime, toUTCString } from "../core/datetime.js";
 import { unwrap, SolidtimeApiError } from "../core/api-client.js";
 import type { SolidtimeTimeEntry } from "../core/types.js";
 
@@ -32,12 +33,12 @@ export function createTimeEntryCommand(): Command {
     .option("--json", "Output raw JSON")
     .option("--member <id>", "Filter by member ID")
     .option("--project <id>", "Filter by single project ID")
-    .option("--projects <ids...>", "Filter by project IDs")
-    .option("--clients <ids...>", "Filter by client IDs")
-    .option("--tasks <ids...>", "Filter by task IDs")
-    .option("--tags <ids...>", "Filter by tag IDs")
-    .option("--start <datetime>", "Filter entries after this time (ISO 8601)")
-    .option("--end <datetime>", "Filter entries before this time (ISO 8601)")
+    .option("--projects <ids...>", "Filter by project IDs (space-separated)")
+    .option("--clients <ids...>", "Filter by client IDs (space-separated)")
+    .option("--tasks <ids...>", "Filter by task IDs (space-separated)")
+    .option("--tags <ids...>", "Filter by tag IDs (space-separated)")
+    .option("--start <datetime>", "Filter after this time (e.g. 2026-04-01T00:00:00Z or +02:00)")
+    .option("--end <datetime>", "Filter before this time (e.g. 2026-04-01T23:59:59Z or +02:00)")
     .option("--active", "Only active (running) entries")
     .option("--billable", "Only billable entries")
     .option("--no-billable", "Only non-billable entries")
@@ -57,8 +58,8 @@ export function createTimeEntryCommand(): Command {
         if (opts.clients) for (const id of opts.clients) params.push(`client_ids[]=${id}`);
         if (opts.tasks) for (const id of opts.tasks) params.push(`task_ids[]=${id}`);
         if (opts.tags) for (const id of opts.tags) params.push(`tag_ids[]=${id}`);
-        if (opts.start) params.push(`start=${opts.start}`);
-        if (opts.end) params.push(`end=${opts.end}`);
+        if (opts.start) params.push(`start=${normalizeDateTime(opts.start)}`);
+        if (opts.end) params.push(`end=${normalizeDateTime(opts.end)}`);
         if (opts.active) params.push("active=true");
         if (opts.billable !== undefined) params.push(`billable=${opts.billable}`);
         if (opts.limit) params.push(`limit=${opts.limit}`);
@@ -96,7 +97,7 @@ export function createTimeEntryCommand(): Command {
     .requiredOption("--description <text>", "Description")
     .option("--project <id>", "Project ID")
     .option("--task <id>", "Task ID")
-    .option("--tags <ids...>", "Tag IDs")
+    .option("--tags <ids...>", "Tag IDs (space-separated)")
     .option("--billable", "Mark as billable")
     .option("--json", "Output raw JSON")
     .action(async (opts) => {
@@ -113,7 +114,7 @@ export function createTimeEntryCommand(): Command {
           task_id: opts.task ?? null,
           tags: opts.tags ?? [],
           billable: opts.billable ?? false,
-          start: new Date().toISOString(),
+          start: toUTCString(new Date()),
           end: null,
         };
 
@@ -152,7 +153,7 @@ export function createTimeEntryCommand(): Command {
 
         const body = {
           member_id: memberId,
-          end: new Date().toISOString(),
+          end: toUTCString(new Date()),
         };
 
         if (isDryRunEnabled()) {
@@ -180,11 +181,11 @@ export function createTimeEntryCommand(): Command {
     .command("create")
     .description("Create a completed time entry")
     .requiredOption("--description <text>", "Description")
-    .requiredOption("--start <iso>", "Start time (ISO 8601)")
-    .requiredOption("--end <iso>", "End time (ISO 8601)")
+    .requiredOption("--start <iso>", "Start time (e.g. 2026-04-01T09:00:00Z or +02:00)")
+    .requiredOption("--end <iso>", "End time (e.g. 2026-04-01T17:00:00Z or +02:00)")
     .option("--project <id>", "Project ID")
     .option("--task <id>", "Task ID")
-    .option("--tags <ids...>", "Tag IDs")
+    .option("--tags <ids...>", "Tag IDs (space-separated)")
     .option("--billable", "Mark as billable")
     .option("--json", "Output raw JSON")
     .action(async (opts) => {
@@ -197,8 +198,8 @@ export function createTimeEntryCommand(): Command {
         const body = {
           member_id: memberId,
           description: opts.description,
-          start: opts.start,
-          end: opts.end,
+          start: normalizeDateTime(opts.start),
+          end: normalizeDateTime(opts.end),
           project_id: opts.project ?? null,
           task_id: opts.task ?? null,
           tags: opts.tags ?? [],
@@ -233,9 +234,9 @@ export function createTimeEntryCommand(): Command {
     .option("--description <text>", "New description")
     .option("--project <id>", "Project ID")
     .option("--task <id>", "Task ID")
-    .option("--tags <ids...>", "Tag IDs")
-    .option("--start <iso>", "Start time")
-    .option("--end <iso>", "End time")
+    .option("--tags <ids...>", "Tag IDs (space-separated)")
+    .option("--start <iso>", "Start time (e.g. 2026-04-01T09:00:00Z or +02:00)")
+    .option("--end <iso>", "End time (e.g. 2026-04-01T17:00:00Z or +02:00)")
     .option("--billable", "Mark as billable")
     .option("--no-billable", "Mark as not billable")
     .option("--json", "Output raw JSON")
@@ -251,8 +252,8 @@ export function createTimeEntryCommand(): Command {
         if (opts.project) body.project_id = opts.project;
         if (opts.task) body.task_id = opts.task;
         if (opts.tags) body.tags = opts.tags;
-        if (opts.start) body.start = opts.start;
-        if (opts.end) body.end = opts.end;
+        if (opts.start) body.start = normalizeDateTime(opts.start);
+        if (opts.end) body.end = normalizeDateTime(opts.end);
         if (opts.billable !== undefined) body.billable = opts.billable;
 
         if (isDryRunEnabled()) {
@@ -344,7 +345,7 @@ export function createTimeEntryCommand(): Command {
   cmd
     .command("bulk-update")
     .description("Update multiple time entries at once")
-    .requiredOption("--ids <ids...>", "Time entry IDs")
+    .requiredOption("--ids <ids...>", "Time entry IDs (space-separated)")
     .option("--description <text>", "New description")
     .option("--project <id>", "Project ID")
     .option("--task <id>", "Task ID")
@@ -394,7 +395,7 @@ export function createTimeEntryCommand(): Command {
   cmd
     .command("bulk-delete")
     .description("Delete multiple time entries at once")
-    .requiredOption("--ids <ids...>", "Time entry IDs")
+    .requiredOption("--ids <ids...>", "Time entry IDs (space-separated)")
     .option("--json", "Output raw JSON")
     .action(async (opts) => {
       try {
@@ -437,12 +438,12 @@ export function createTimeEntryCommand(): Command {
     )
     .option("--sub-group <type>", "Secondary grouping (same options as --group)")
     .option("--member <id>", "Filter by member ID")
-    .option("--projects <ids...>", "Filter by project IDs")
-    .option("--clients <ids...>", "Filter by client IDs")
-    .option("--tasks <ids...>", "Filter by task IDs")
-    .option("--tags <ids...>", "Filter by tag IDs")
-    .option("--start <datetime>", "Filter entries after this time (ISO 8601)")
-    .option("--end <datetime>", "Filter entries before this time (ISO 8601)")
+    .option("--projects <ids...>", "Filter by project IDs (space-separated)")
+    .option("--clients <ids...>", "Filter by client IDs (space-separated)")
+    .option("--tasks <ids...>", "Filter by task IDs (space-separated)")
+    .option("--tags <ids...>", "Filter by tag IDs (space-separated)")
+    .option("--start <datetime>", "Filter after this time (e.g. 2026-04-01T00:00:00Z or +02:00)")
+    .option("--end <datetime>", "Filter before this time (e.g. 2026-04-01T23:59:59Z or +02:00)")
     .option("--billable", "Only billable entries")
     .option("--no-billable", "Only non-billable entries")
     .option("--fill-gaps", "Fill gaps in time-based groups")
@@ -461,8 +462,8 @@ export function createTimeEntryCommand(): Command {
         if (opts.clients) for (const id of opts.clients) params.push(`client_ids[]=${id}`);
         if (opts.tasks) for (const id of opts.tasks) params.push(`task_ids[]=${id}`);
         if (opts.tags) for (const id of opts.tags) params.push(`tag_ids[]=${id}`);
-        if (opts.start) params.push(`start=${opts.start}`);
-        if (opts.end) params.push(`end=${opts.end}`);
+        if (opts.start) params.push(`start=${normalizeDateTime(opts.start)}`);
+        if (opts.end) params.push(`end=${normalizeDateTime(opts.end)}`);
         if (opts.billable !== undefined) params.push(`billable=${opts.billable}`);
         if (opts.fillGaps) params.push("fill_gaps_in_time_groups=true");
 
