@@ -1,14 +1,20 @@
 #!/usr/bin/env node
 import { createRequire } from "node:module";
 import { Command } from "commander";
+import { createCompletionCommand } from "./commands/completion.js";
 import { createLoginCommand } from "./commands/login.js";
 import { createLogoutCommand } from "./commands/logout.js";
+import { createAccountCommand } from "./commands/account.js";
 import { createWhereCommand } from "./commands/where.js";
+import { createOrganizationCommand } from "./commands/organization.js";
 import { createProjectCommand } from "./commands/project.js";
 import { createTimeEntryCommand } from "./commands/time-entry.js";
 import { createTaskCommand } from "./commands/task.js";
 import { createTagCommand } from "./commands/tag.js";
 import { createMemberCommand } from "./commands/member.js";
+import { createDiscoverCommand } from "./commands/discover.js";
+import { createProfileCommand } from "./commands/profile.js";
+import { createUpgradeCommand, fetchLatestVersion, isNewer } from "./commands/upgrade.js";
 import { configureHelp } from "./core/help.js";
 
 const require = createRequire(import.meta.url);
@@ -33,18 +39,31 @@ program
   .helpCommand(true)
   .action(async () => {
     console.log(SPLASH);
-    console.log(`  Get started: solidtime login\n`);
+    const latest = await Promise.race<string | null>([
+      fetchLatestVersion(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+    ]);
+    if (latest && isNewer(latest, pkg.version)) {
+      console.log(`  Update available v${latest}  ·  run: solidtime upgrade\n`);
+    }
+    console.log(`  AI start: solidtime discover context\n`);
     program.help();
   });
 
 program.addCommand(createLoginCommand());
 program.addCommand(createLogoutCommand());
+program.addCommand(createCompletionCommand(program));
+program.addCommand(createAccountCommand());
 program.addCommand(createWhereCommand());
+program.addCommand(createOrganizationCommand());
+program.addCommand(createDiscoverCommand());
 program.addCommand(createProjectCommand());
 program.addCommand(createTimeEntryCommand());
 program.addCommand(createTaskCommand());
 program.addCommand(createTagCommand());
 program.addCommand(createMemberCommand());
+program.addCommand(createProfileCommand());
+program.addCommand(createUpgradeCommand());
 
 configureHelp(program);
 
