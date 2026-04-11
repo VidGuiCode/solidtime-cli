@@ -8,6 +8,7 @@ Thumbs.db
 .idea/
 .vscode/
 .claude/
+CLAUDE.md
 context/
 .obsidian/
 solidtime-cli-*.tgz
