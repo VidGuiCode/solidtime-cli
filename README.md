@@ -1,5 +1,11 @@
 # solidtime-cli
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-green.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue.svg)](https://www.typescriptlang.org/)
+[![GitHub release](https://img.shields.io/github/v/release/VidGuiCode/solidtime-cli)](https://github.com/VidGuiCode/solidtime-cli/releases)
+[![Unofficial](https://img.shields.io/badge/Solidtime-Unofficial%20CLI-orange.svg)](https://www.solidtime.io/)
+
 Unofficial command-line client for [Solidtime](https://www.solidtime.io/) — open-source time tracking.
 
 Works with both self-hosted Solidtime instances and [Solidtime Cloud](https://app.solidtime.io). Designed for humans in a terminal and AI agents that can run shell commands.
@@ -7,7 +13,7 @@ Works with both self-hosted Solidtime instances and [Solidtime Cloud](https://ap
 ## Install
 
 ```bash
-npm install -g https://github.com/VidGuiCode/solidtime-cli/releases/download/v0.1.0/solidtime-cli-0.1.0.tgz
+npm install -g https://github.com/VidGuiCode/solidtime-cli/releases/download/v0.1.1/solidtime-cli-0.1.1.tgz
 ```
 
 Requires **Node.js 20+**. Works on Windows, macOS, and Linux.
