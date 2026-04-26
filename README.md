@@ -12,11 +12,19 @@ Works with both self-hosted Solidtime instances and [Solidtime Cloud](https://ap
 
 ## Install
 
+Requires Node.js 20+ and npm.
+
 ```bash
 npm install -g https://github.com/VidGuiCode/solidtime-cli/releases/download/v0.1.1/solidtime-cli-0.1.1.tgz
+solidtime --version
+solidtime login
 ```
 
-Requires **Node.js 20+**. Works on Windows, macOS, and Linux.
+This installs the `solidtime` command as a normal npm global CLI. It does not require `sudo`, does not install a system service, and does not modify system configuration.
+
+On Linux and macOS, avoid `sudo npm install -g` for this CLI. If npm global installs fail with permission errors, use a user-level Node.js setup such as [`nvm`](https://github.com/nvm-sh/nvm) or [`fnm`](https://github.com/Schniz/fnm), or configure npm's global prefix to a user-owned directory.
+
+Works on Windows, macOS, and Linux.
 
 ## Quick Start
 
@@ -127,7 +135,7 @@ solidtime te list --limit 100 --offset 50     # pagination
 
 ## Environment Variables
 
-For CI/automation, you can skip the config file entirely:
+For CI/automation, you can skip the saved config file entirely:
 
 | Variable | Description |
 |----------|-------------|
@@ -137,11 +145,11 @@ For CI/automation, you can skip the config file entirely:
 | `SOLIDTIME_MEMBER_ID` | Your membership ID in the org |
 | `SOLIDTIME_CONFIG` | Path to custom config file |
 
-When both `SOLIDTIME_BASE_URL` and `SOLIDTIME_API_TOKEN` are set, no config file is needed.
+When both `SOLIDTIME_BASE_URL` and `SOLIDTIME_API_TOKEN` are set, no saved login config is needed. Environment variables are supplied by your shell, CI system, or container runtime. The CLI reads them but does not create an `.env` file.
 
 ## Configuration
 
-Config is stored at `~/.solidtime-cli/config.json`. Supports multiple accounts — switch between them with `solidtime account use <name>`.
+Login state is stored at `~/.solidtime-cli/config.json`. This file contains your Solidtime base URL, active context, and API token. Treat it as a secret and do not share or commit it. Multiple accounts are supported - switch between them with `solidtime account use <name>`.
 
 ## Non-Interactive Login
 
