@@ -18,7 +18,7 @@ import {
   resolveTaskIds,
   resolveTagIds,
 } from "../core/resolve.js";
-import type { SolidtimeTimeEntry } from "../core/types.js";
+import type { SolidtimeAggregateRow, SolidtimeTimeEntry } from "../core/types.js";
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -531,7 +531,38 @@ export function createTimeEntryCommand(): Command {
         const path = `organizations/${org}/time-entries/aggregate?${query}`;
         const res = await client.get<unknown>(path);
 
-        printJson(res);
+        if (opts.json) {
+          printJson(res);
+          return;
+        }
+
+        const aggregateRows = unwrap<SolidtimeAggregateRow>(res);
+        if (aggregateRows.length === 0) {
+          console.log("No time entries in this period.");
+          return;
+        }
+
+        const table: string[][] = [];
+        for (const row of aggregateRows) {
+          if (row.grouped_data && row.grouped_data.length > 0) {
+            for (const sub of row.grouped_data) {
+              table.push([
+                row.key ?? "(none)",
+                sub.key ?? "(none)",
+                formatDuration(sub.seconds),
+                sub.cost !== null ? String(sub.cost) : "",
+              ]);
+            }
+          } else {
+            table.push([
+              row.key ?? "(none)",
+              "",
+              formatDuration(row.seconds),
+              row.cost !== null ? String(row.cost) : "",
+            ]);
+          }
+        }
+        printTable(table, ["Group", "Sub-group", "Duration", "Cost"]);
       } catch (err) {
         exitWithError(err, Boolean(opts.json));
       }
