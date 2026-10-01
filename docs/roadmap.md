@@ -11,13 +11,13 @@
 
 ## v0.1.2 (bug fixes + parallel agent tracking)
 
-- [ ] Fix unencoded URL query parameters (Critical bug)
-- [ ] Add pagination support for `list` commands
-- [ ] Fix ineffective jitter in retry logic
-- [ ] Make network error detection more robust
-- [ ] Handle un-silenced file permission errors safely
-- [ ] Update outdated module imports (`package.json`)
-- [ ] Add validation on empty updates
+- [x] Fix unencoded URL query parameters (Critical bug)
+- [x] Add pagination support for `list` commands (member/project/tag/task use `fetchAll`; `te list` intentionally keeps its own server-side `--limit`/`--offset`)
+- [x] Fix ineffective jitter in retry logic
+- [x] Make network error detection more robust
+- [x] Handle un-silenced file permission errors safely (`chmod` errors stay silenced for filesystems without POSIX modes; read/write failures now raise a clear message with the config path)
+- [x] Update outdated module imports (`package.json`)
+- [x] Add validation on empty updates
 - [ ] Don't blindly retry non-idempotent requests (`POST`/`PATCH`/`DELETE`): a lost response on `te create` currently creates a duplicate entry
 - [ ] Fail with a clear error on a corrupt `config.json` instead of returning an empty config that the next `saveConfig()` writes over, wiping every saved account
 - [ ] README: install link points to an old release; use a "latest release" link
