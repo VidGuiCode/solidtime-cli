@@ -7,8 +7,17 @@ Thumbs.db
 .env.local
 .idea/
 .vscode/
-.claude/
-CLAUDE.md
 context/
 .obsidian/
 solidtime-cli-*.tgz
+
+# AI agent files
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+.agent/
+.agents/
+AGENT.md
+AGENTS.md
+.mimosa/
+.video_agent/
