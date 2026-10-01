@@ -4,9 +4,33 @@
 
 Bug fixes and parallel agent tracking.
 
+### Added
+
+- **`track` command** — run several local timers in parallel on one account. Running timers live in `~/.solidtime-cli/tracks/<id>.json` (one file per timer, atomic writes); `track stop` sends the finished entry to Solidtime and keeps the file if the send fails, so nothing is lost. Subcommands: `start`, `stop <id>`, `stop --all [--label]`, `list`, `cancel`, `show`. Stale timers (12 h by default, `SOLIDTIME_TRACK_STALE_HOURS`) are flagged and guarded; `--label` groups timers per agent session.
+- **`report` command** — totals for a period grouped by project and split by the documented `human`/`agent` tag convention, with readable tables (`--json` for agents).
+- **Name-or-ID selectors** — `--project`, `--task` and `--tags` accept names as well as UUIDs (case-insensitive; ambiguous names are a validation error listing the candidates).
+- **`--create-missing-tags`** on `te start`, `te create`, `te update` and `track start` — unknown tags are created on first use (reported but not created under `--dry-run`).
+- **`te update --no-project` / `--no-task`** — clear an entry's project or task.
+- **`te list --mine`** — shortcut filtering by the active member.
+- **`task create --estimate`** (`90m`, `1h30m`, or plain seconds) and **`task update --project <id|name>`** (also `task update --estimate`).
+- **`te aggregate` without `--json`** now prints a readable table instead of ignoring the flag.
+
+### Fixed
+
+- **No more duplicate entries from retries** — non-idempotent requests (`POST`/`PATCH`, `DELETE` with a body) are no longer blindly retried on 5xx or connection drops. When a `te create`/`track stop` POST fails in a way that may have reached the server, the CLI looks for an existing entry with the same member, start and description and treats it as success instead of creating a duplicate.
+- **A corrupt `config.json` no longer gets silently wiped** — the CLI now fails with a clear error (including the file path) instead of loading an empty config that the next save would overwrite, losing every saved account.
+- **Unencoded URL query parameters** — query strings are built with `URLSearchParams`.
+- **Missing pagination** — `member`, `project`, `tag` and `task` list commands fetch all pages.
+- **Ineffective retry jitter** — the jitter is now proportional to the exponential backoff.
+- **Network error detection** — no longer relies on error message sniffing.
+- **Config file permission errors** — read/write failures raise a clear error naming the config path.
+- **`project update` no longer silently detaches the client** — an empty `client_id` was sent on every update.
+- **Empty updates rejected locally** — `te/project/task/member/organization update` with no fields fail with a validation error instead of sending an empty body.
+
 ### Changed
 
-- **Node.js 20.10 or newer is required** — the CLI now uses JSON import attributes (`with { type: "json" }`), which Node 20.10 was the first to support
+- **Node.js 20.10 or newer is required** — the CLI now uses JSON import attributes (`with { type: "json" }`), which Node 20.10 was the first to support.
+- The active profile, organization and member are captured when `track start` runs, so `track stop` posts to the same account even after `account use`.
 
 ## 0.1.1
 
