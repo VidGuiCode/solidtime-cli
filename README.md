@@ -12,7 +12,7 @@ Works with both self-hosted Solidtime instances and [Solidtime Cloud](https://ap
 
 ## Install
 
-Requires Node.js 20+ and npm.
+Requires Node.js 20.10+ and npm (the CLI uses JSON import attributes, which Node 20.10 was the first to support).
 
 ```bash
 npm install -g https://github.com/VidGuiCode/solidtime-cli/releases/download/v0.1.1/solidtime-cli-0.1.1.tgz

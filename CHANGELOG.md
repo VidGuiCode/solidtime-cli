@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2
+
+Bug fixes and parallel agent tracking.
+
+### Changed
+
+- **Node.js 20.10 or newer is required** — the CLI now uses JSON import attributes (`with { type: "json" }`), which Node 20.10 was the first to support
+
 ## 0.1.1
 
 Patch release: agent-reported friction fixes.
