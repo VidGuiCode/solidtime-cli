@@ -4,6 +4,7 @@ import fs from "node:fs";
 import type { SolidtimeConfig, SolidtimeAccount, SolidtimeMembership } from "./types.js";
 import { SolidtimeApiClient } from "./api-client.js";
 import { printError } from "./output.js";
+import { ValidationError } from "./errors.js";
 
 export const DEFAULT_CONFIG: SolidtimeConfig = {
   profiles: [],
@@ -46,7 +47,15 @@ export function loadConfig(): SolidtimeConfig {
   } catch (err) {
     throw describeConfigError(err, configPath, "read");
   }
-  return JSON.parse(raw) as SolidtimeConfig;
+  try {
+    return JSON.parse(raw) as SolidtimeConfig;
+  } catch {
+    // Never fall back to an empty config: the next saveConfig() would wipe
+    // every saved account.
+    throw new ValidationError(
+      `Config file is not valid JSON: ${configPath}. Fix or delete the file, then run: solidtime login`,
+    );
+  }
 }
 
 export function saveConfig(config: SolidtimeConfig): void {

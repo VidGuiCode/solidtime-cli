@@ -38,6 +38,16 @@ describe("config-store", () => {
     expect(loadConfig()).toEqual({ profiles: [], context: {} });
   });
 
+  it("throws and leaves the file unchanged when the config file is corrupt", async () => {
+    tempDir = setupTempConfigDir();
+    const { loadConfig, getConfigPath } = await importConfigStore();
+    fs.mkdirSync(path.dirname(getConfigPath()), { recursive: true });
+    fs.writeFileSync(getConfigPath(), "{not json", "utf-8");
+
+    expect(() => loadConfig()).toThrow(/not valid JSON/);
+    expect(fs.readFileSync(getConfigPath(), "utf-8")).toBe("{not json");
+  });
+
   it("saves and loads config JSON", async () => {
     tempDir = setupTempConfigDir();
     const { saveConfig, loadConfig } = await importConfigStore();
