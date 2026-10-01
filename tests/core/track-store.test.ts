@@ -123,13 +123,17 @@ describe("stale tracks", () => {
   });
 
   it("flags tracks older than the threshold", () => {
-    const record = makeRecord({ start: new Date(Date.now() - 13 * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z") });
+    const record = makeRecord({
+      start: new Date(Date.now() - 13 * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z"),
+    });
     expect(isTrackStale(record, 12)).toBe(true);
     expect(isTrackStale(record, 14)).toBe(false);
   });
 
   it("computes elapsed seconds from the start", () => {
-    const record = makeRecord({ start: new Date(Date.now() - 90 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z") });
+    const record = makeRecord({
+      start: new Date(Date.now() - 90 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z"),
+    });
     const elapsed = trackElapsedSeconds(record);
     expect(elapsed).toBeGreaterThanOrEqual(89);
     expect(elapsed).toBeLessThan(95);

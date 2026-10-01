@@ -47,9 +47,7 @@ afterEach(() => {
 
 describe("createTimeEntryWithDedupe", () => {
   it("posts normally when the server responds 2xx", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(201, { data: existingEntry() }));
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(201, { data: existingEntry() }));
     vi.stubGlobal("fetch", fetchMock);
     const client = new SolidtimeApiClient({ baseUrl: "https://x", token: "t", retryDelay: 1 });
 
@@ -73,9 +71,7 @@ describe("createTimeEntryWithDedupe", () => {
     expect(deduped).toBe(true);
     expect(entry.id).toBe("entry-1");
     // Exactly one POST; the second call is the dedupe lookup (fetch's default method is GET).
-    const methods = fetchMock.mock.calls.map(
-      (c) => (c[1] as RequestInit).method ?? "GET",
-    );
+    const methods = fetchMock.mock.calls.map((c) => (c[1] as RequestInit).method ?? "GET");
     expect(methods).toEqual(["POST", "GET"]);
   });
 
@@ -104,9 +100,7 @@ describe("createTimeEntryWithDedupe", () => {
   });
 
   it("does not run the dedupe lookup for validation errors (4xx)", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(422, { message: "invalid" }));
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(422, { message: "invalid" }));
     vi.stubGlobal("fetch", fetchMock);
     const client = new SolidtimeApiClient({ baseUrl: "https://x", token: "t", retryDelay: 1 });
 

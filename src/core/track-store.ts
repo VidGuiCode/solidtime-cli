@@ -67,7 +67,10 @@ export function writeTrack(track: SolidtimeTrack): void {
   fs.mkdirSync(dir, { recursive: true });
   // Atomic write: temp file + rename, so a crash mid-write cannot leave a
   // half-written track file behind.
-  const tmp = path.join(dir, `${track.id}.json.tmp-${process.pid}-${crypto.randomBytes(4).toString("hex")}`);
+  const tmp = path.join(
+    dir,
+    `${track.id}.json.tmp-${process.pid}-${crypto.randomBytes(4).toString("hex")}`,
+  );
   fs.writeFileSync(tmp, JSON.stringify(track, null, 2), "utf-8");
   fs.renameSync(tmp, path.join(dir, `${track.id}.json`));
 }
@@ -136,7 +139,11 @@ export function getStaleHours(): number {
   return value;
 }
 
-export function isTrackStale(track: SolidtimeTrack, staleHours: number, now: Date = new Date()): boolean {
+export function isTrackStale(
+  track: SolidtimeTrack,
+  staleHours: number,
+  now: Date = new Date(),
+): boolean {
   return trackElapsedSeconds(track, now) > staleHours * 3600;
 }
 

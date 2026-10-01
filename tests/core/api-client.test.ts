@@ -44,7 +44,9 @@ describe("fetchWithRetry", () => {
     vi.stubGlobal("fetch", fetchMock);
     const client = new SolidtimeApiClient({ baseUrl: "https://x", token: "t", retryDelay: 1 });
 
-    await expect(client.deleteWithBody("/things", { ids: ["1"] })).rejects.toThrow(SolidtimeApiError);
+    await expect(client.deleteWithBody("/things", { ids: ["1"] })).rejects.toThrow(
+      SolidtimeApiError,
+    );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

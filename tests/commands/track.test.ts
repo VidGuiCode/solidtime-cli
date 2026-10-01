@@ -3,7 +3,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createTrackCommand } from "../../src/commands/track.js";
-import { listTracks, readTrack, writeTrack, type SolidtimeTrack } from "../../src/core/track-store.js";
+import {
+  listTracks,
+  readTrack,
+  writeTrack,
+  type SolidtimeTrack,
+} from "../../src/core/track-store.js";
 import type { SolidtimeTimeEntry } from "../../src/core/types.js";
 
 const ORG = "org-1";
@@ -178,7 +183,9 @@ describe("track stop", () => {
     const fetchMock = vi.fn(async (_url: unknown, init?: RequestInit) => {
       if (init?.method !== "POST") return jsonResponse(400);
       postCount++;
-      return postCount === 1 ? jsonResponse(500, { message: "boom" }) : entryResponse(makeEntry("entry-1"));
+      return postCount === 1
+        ? jsonResponse(500, { message: "boom" })
+        : entryResponse(makeEntry("entry-1"));
     });
     vi.stubGlobal("fetch", fetchMock);
     const exit = stubExit();

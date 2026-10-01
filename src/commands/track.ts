@@ -37,9 +37,7 @@ function formatDuration(seconds: number): string {
 function requireTrack(id: string): SolidtimeTrack {
   const track = readTrack(id);
   if (!track) {
-    throw new ValidationError(
-      `No running track with id "${id}". Run: solidtime track list`,
-    );
+    throw new ValidationError(`No running track with id "${id}". Run: solidtime track list`);
   }
   return track;
 }
@@ -225,9 +223,7 @@ export function createTrackCommand(): Command {
             printJson({ stopped, failed });
           } else if (tracks.length === 0) {
             console.log(
-              opts.label
-                ? `No running tracks with label "${opts.label}".`
-                : "No running tracks.",
+              opts.label ? `No running tracks with label "${opts.label}".` : "No running tracks.",
             );
           }
 
@@ -352,7 +348,9 @@ export function createTrackCommand(): Command {
         console.log(`Description: ${track.description || "(no description)"}`);
         console.log(`Label:       ${track.label ?? ""}`);
         console.log(`Start:       ${track.start}`);
-        console.log(`Elapsed:     ${formatElapsed(elapsed)}${isTrackStale(track, staleHours) ? " (STALE)" : ""}`);
+        console.log(
+          `Elapsed:     ${formatElapsed(elapsed)}${isTrackStale(track, staleHours) ? " (STALE)" : ""}`,
+        );
         console.log(`Project:     ${track.project_id ?? "-"}`);
         console.log(`Task:        ${track.task_id ?? "-"}`);
         console.log(`Tags:        ${track.tags.join(", ") || "-"}`);

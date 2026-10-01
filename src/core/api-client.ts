@@ -148,14 +148,9 @@ export class SolidtimeApiClient {
 
           if (attempt === this.maxRetries) {
             const errorText = await res.text();
-            throw new SolidtimeApiRateLimitError(
-              res.status,
-              errorText,
-              retryAfter,
-              method,
-              path,
-              { response: errorText },
-            );
+            throw new SolidtimeApiRateLimitError(res.status, errorText, retryAfter, method, path, {
+              response: errorText,
+            });
           }
 
           await this.sleep(this.calculateDelay(attempt, retryAfter));
