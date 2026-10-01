@@ -11,6 +11,13 @@ import { isDryRunEnabled } from "../core/runtime.js";
 import { normalizeDateTime, toUTCString } from "../core/datetime.js";
 import { unwrap, SolidtimeApiError } from "../core/api-client.js";
 import { createTimeEntryWithDedupe } from "../core/time-entries.js";
+import {
+  resolveProject,
+  resolveProjectIds,
+  resolveTask,
+  resolveTaskIds,
+  resolveTagIds,
+} from "../core/resolve.js";
 import type { SolidtimeTimeEntry } from "../core/types.js";
 
 function formatDuration(seconds: number): string {
@@ -31,11 +38,12 @@ export function createTimeEntryCommand(): Command {
     .description("List time entries")
     .option("--json", "Output raw JSON")
     .option("--member <id>", "Filter by member ID")
-    .option("--project <id>", "Filter by single project ID")
-    .option("--projects <ids...>", "Filter by project IDs (space-separated)")
+    .option("--mine", "Filter by the active member")
+    .option("--project <id|name>", "Filter by single project ID or name")
+    .option("--projects <ids...>", "Filter by project IDs or names (space-separated)")
     .option("--clients <ids...>", "Filter by client IDs (space-separated)")
-    .option("--tasks <ids...>", "Filter by task IDs (space-separated)")
-    .option("--tags <ids...>", "Filter by tag IDs (space-separated)")
+    .option("--tasks <ids...>", "Filter by task IDs or names (space-separated)")
+    .option("--tags <ids...>", "Filter by tag IDs or names (space-separated)")
     .option("--start <datetime>", "Filter after this time (e.g. 2026-04-01T00:00:00Z or +02:00)")
     .option("--end <datetime>", "Filter before this time (e.g. 2026-04-01T23:59:59Z or +02:00)")
     .option("--active", "Only active (running) entries")
@@ -50,13 +58,22 @@ export function createTimeEntryCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
+        const projectFilter = [...(opts.project ? [opts.project] : []), ...(opts.projects ?? [])];
+        const taskFilter: string[] = opts.tasks ?? [];
+        const tagFilter: string[] = opts.tags ?? [];
+
+        const projectIds =
+          projectFilter.length > 0 ? await resolveProjectIds(client, org, projectFilter) : [];
+        const taskIds = taskFilter.length > 0 ? await resolveTaskIds(client, org, taskFilter) : [];
+        const tagIds = tagFilter.length > 0 ? await resolveTagIds(client, org, tagFilter) : [];
+
         const params = new URLSearchParams();
-        if (opts.member) params.append("member_id", opts.member);
-        if (opts.project) params.append("project_ids[]", opts.project);
-        if (opts.projects) for (const id of opts.projects) params.append("project_ids[]", id);
+        if (opts.mine) params.append("member_id", requireActiveMemberId(config));
+        else if (opts.member) params.append("member_id", opts.member);
+        for (const id of projectIds) params.append("project_ids[]", id);
         if (opts.clients) for (const id of opts.clients) params.append("client_ids[]", id);
-        if (opts.tasks) for (const id of opts.tasks) params.append("task_ids[]", id);
-        if (opts.tags) for (const id of opts.tags) params.append("tag_ids[]", id);
+        for (const id of taskIds) params.append("task_ids[]", id);
+        for (const id of tagIds) params.append("tag_ids[]", id);
         if (opts.start) params.append("start", normalizeDateTime(opts.start));
         if (opts.end) params.append("end", normalizeDateTime(opts.end));
         if (opts.active) params.append("active", "true");
@@ -93,9 +110,10 @@ export function createTimeEntryCommand(): Command {
     .command("start")
     .description("Start a new time entry (timer)")
     .requiredOption("--description <text>", "Description")
-    .option("--project <id>", "Project ID")
-    .option("--task <id>", "Task ID")
-    .option("--tags <ids...>", "Tag IDs (space-separated)")
+    .option("--project <id|name>", "Project ID or name")
+    .option("--task <id|name>", "Task ID or name")
+    .option("--tags <ids...>", "Tag IDs or names (space-separated)")
+    .option("--create-missing-tags", "Create tags that do not exist yet")
     .option("--billable", "Mark as billable")
     .option("--json", "Output raw JSON")
     .action(async (opts) => {
@@ -105,12 +123,20 @@ export function createTimeEntryCommand(): Command {
         const org = requireActiveOrganization(config);
         const memberId = requireActiveMemberId(config);
 
+        const projectId = opts.project ? await resolveProject(client, org, opts.project) : null;
+        const taskId = opts.task ? await resolveTask(client, org, opts.task, projectId) : null;
+        const tagIds = opts.tags
+          ? await resolveTagIds(client, org, opts.tags, {
+              createMissing: Boolean(opts.createMissingTags),
+            })
+          : [];
+
         const body = {
           member_id: memberId,
           description: opts.description,
-          project_id: opts.project ?? null,
-          task_id: opts.task ?? null,
-          tags: opts.tags ?? [],
+          project_id: projectId,
+          task_id: taskId,
+          tags: tagIds,
           billable: opts.billable ?? false,
           start: toUTCString(new Date()),
           end: null,
@@ -181,9 +207,10 @@ export function createTimeEntryCommand(): Command {
     .requiredOption("--description <text>", "Description")
     .requiredOption("--start <iso>", "Start time (e.g. 2026-04-01T09:00:00Z or +02:00)")
     .requiredOption("--end <iso>", "End time (e.g. 2026-04-01T17:00:00Z or +02:00)")
-    .option("--project <id>", "Project ID")
-    .option("--task <id>", "Task ID")
-    .option("--tags <ids...>", "Tag IDs (space-separated)")
+    .option("--project <id|name>", "Project ID or name")
+    .option("--task <id|name>", "Task ID or name")
+    .option("--tags <ids...>", "Tag IDs or names (space-separated)")
+    .option("--create-missing-tags", "Create tags that do not exist yet")
     .option("--billable", "Mark as billable")
     .option("--json", "Output raw JSON")
     .action(async (opts) => {
@@ -193,14 +220,22 @@ export function createTimeEntryCommand(): Command {
         const org = requireActiveOrganization(config);
         const memberId = requireActiveMemberId(config);
 
+        const projectId = opts.project ? await resolveProject(client, org, opts.project) : null;
+        const taskId = opts.task ? await resolveTask(client, org, opts.task, projectId) : null;
+        const tagIds = opts.tags
+          ? await resolveTagIds(client, org, opts.tags, {
+              createMissing: Boolean(opts.createMissingTags),
+            })
+          : [];
+
         const body = {
           member_id: memberId,
           description: opts.description,
           start: normalizeDateTime(opts.start),
           end: normalizeDateTime(opts.end),
-          project_id: opts.project ?? null,
-          task_id: opts.task ?? null,
-          tags: opts.tags ?? [],
+          project_id: projectId,
+          task_id: taskId,
+          tags: tagIds,
           billable: opts.billable ?? false,
         };
 
@@ -232,9 +267,12 @@ export function createTimeEntryCommand(): Command {
     .description("Update a time entry")
     .argument("<id>", "Time entry ID")
     .option("--description <text>", "New description")
-    .option("--project <id>", "Project ID")
-    .option("--task <id>", "Task ID")
-    .option("--tags <ids...>", "Tag IDs (space-separated)")
+    .option("--project <id|name>", "Project ID or name")
+    .option("--no-project", "Clear the project")
+    .option("--task <id|name>", "Task ID or name")
+    .option("--no-task", "Clear the task")
+    .option("--tags <ids...>", "Tag IDs or names (space-separated)")
+    .option("--create-missing-tags", "Create tags that do not exist yet")
     .option("--start <iso>", "Start time (e.g. 2026-04-01T09:00:00Z or +02:00)")
     .option("--end <iso>", "End time (e.g. 2026-04-01T17:00:00Z or +02:00)")
     .option("--billable", "Mark as billable")
@@ -247,11 +285,27 @@ export function createTimeEntryCommand(): Command {
         const org = requireActiveOrganization(config);
         const memberId = requireActiveMemberId(config);
 
+        // Commander turns `--project` and `--no-project` into boolean `false`
+        // when neither is given, so only a string value means "set it".
+        const projectId =
+          typeof opts.project === "string" ? await resolveProject(client, org, opts.project) : null;
+        const taskId =
+          typeof opts.task === "string"
+            ? await resolveTask(client, org, opts.task, projectId)
+            : null;
+        const tagIds = opts.tags
+          ? await resolveTagIds(client, org, opts.tags, {
+              createMissing: Boolean(opts.createMissingTags),
+            })
+          : null;
+
         const body: Record<string, unknown> = { member_id: memberId };
         if (opts.description) body.description = opts.description;
-        if (opts.project) body.project_id = opts.project;
-        if (opts.task) body.task_id = opts.task;
-        if (opts.tags) body.tags = opts.tags;
+        if (opts.project === false) body.project_id = null;
+        else if (projectId) body.project_id = projectId;
+        if (opts.task === false) body.task_id = null;
+        else if (taskId) body.task_id = taskId;
+        if (tagIds) body.tags = tagIds;
         if (opts.start) body.start = normalizeDateTime(opts.start);
         if (opts.end) body.end = normalizeDateTime(opts.end);
         if (opts.billable !== undefined) body.billable = opts.billable;

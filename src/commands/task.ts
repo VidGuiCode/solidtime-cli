@@ -4,6 +4,8 @@ import { printJson, printTable } from "../core/output.js";
 import { exitWithError, ValidationError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
 import { fetchAll } from "../core/api-client.js";
+import { resolveProject } from "../core/resolve.js";
+import { parseDurationSeconds } from "../core/datetime.js";
 import type { SolidtimeTask } from "../core/types.js";
 
 function formatDuration(seconds: number): string {
@@ -19,7 +21,7 @@ export function createTaskCommand(): Command {
     .command("list")
     .description("List all tasks")
     .option("--json", "Output raw JSON")
-    .option("--project <id>", "Filter by project ID")
+    .option("--project <id|name>", "Filter by project ID or name")
     .option("--done", "Include completed tasks")
     .action(async (opts) => {
       try {
@@ -27,8 +29,10 @@ export function createTaskCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
+        const projectId = opts.project ? await resolveProject(client, org, opts.project) : null;
+
         const params = new URLSearchParams();
-        if (opts.project) params.append("project_id", opts.project);
+        if (projectId) params.append("project_id", projectId);
         if (!opts.done) params.append("done", "false");
 
         const query = params.toString();
@@ -57,7 +61,8 @@ export function createTaskCommand(): Command {
     .command("create")
     .description("Create a new task")
     .requiredOption("--name <name>", "Task name")
-    .requiredOption("--project <id>", "Project ID")
+    .requiredOption("--project <id|name>", "Project ID or name")
+    .option("--estimate <duration>", "Estimated time (e.g. 90m, 1h30m, or plain seconds)")
     .option("--json", "Output raw JSON")
     .action(async (opts) => {
       try {
@@ -65,10 +70,12 @@ export function createTaskCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const body = {
+        const projectId = await resolveProject(client, org, opts.project);
+        const body: Record<string, unknown> = {
           name: opts.name,
-          project_id: opts.project,
+          project_id: projectId,
         };
+        if (opts.estimate) body.estimated_time = parseDurationSeconds(opts.estimate);
 
         if (isDryRunEnabled()) {
           printJson({ dryRun: true, action: "task.create", body });
@@ -93,6 +100,8 @@ export function createTaskCommand(): Command {
     .description("Update a task")
     .argument("<id>", "Task ID")
     .option("--name <name>", "New name")
+    .option("--project <id|name>", "Move the task to this project (ID or name)")
+    .option("--estimate <duration>", "Estimated time (e.g. 90m, 1h30m, or plain seconds)")
     .option("--done", "Mark as done")
     .option("--no-done", "Mark as not done")
     .option("--json", "Output raw JSON")
@@ -104,6 +113,8 @@ export function createTaskCommand(): Command {
 
         const body: Record<string, unknown> = {};
         if (opts.name) body.name = opts.name;
+        if (opts.project) body.project_id = await resolveProject(client, org, opts.project);
+        if (opts.estimate) body.estimated_time = parseDurationSeconds(opts.estimate);
         if (opts.done !== undefined) body.is_done = opts.done;
 
         if (Object.keys(body).length === 0) {

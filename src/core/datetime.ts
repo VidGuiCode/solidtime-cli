@@ -20,3 +20,22 @@ export function normalizeDateTime(input: string): string {
   }
   return toUTCString(d);
 }
+
+/**
+ * Parse a human duration and return seconds.
+ * Accepts plain seconds ("5400") or d/h/m/s components ("90m", "1h30m", "2h").
+ */
+export function parseDurationSeconds(input: string): number {
+  const trimmed = input.trim();
+  if (/^\d+$/.test(trimmed)) return Number(trimmed);
+
+  const match = trimmed.match(/^((\d+)d)?((\d+)h)?((\d+)m)?((\d+)s)?$/i);
+  const hasComponent = match && match.slice(2).some((g) => g !== undefined);
+  if (!match || !hasComponent) {
+    throw new ValidationError(
+      `Invalid duration: "${input}". Examples: 90m, 1h30m, 2h, or plain seconds (5400)`,
+    );
+  }
+  const [, , d, , h, , m, , s] = match;
+  return Number(d ?? 0) * 86400 + Number(h ?? 0) * 3600 + Number(m ?? 0) * 60 + Number(s ?? 0);
+}
