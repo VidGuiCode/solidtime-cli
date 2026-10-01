@@ -24,16 +24,29 @@ export function getConfigPath(): string {
   return path.join(getConfigDir(), "config.json");
 }
 
+function describeConfigError(err: unknown, configPath: string, action: "read" | "write"): Error {
+  const code = err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
+  if (code === "EACCES" || code === "EPERM") {
+    return new Error(
+      `Cannot ${action} config file (permission denied): ${configPath}. ` +
+        `Fix the file permissions or set SOLIDTIME_CONFIG to a ${action === "read" ? "readable" : "writable"} path.`,
+    );
+  }
+  return err instanceof Error ? err : new Error(String(err));
+}
+
 export function loadConfig(): SolidtimeConfig {
   const configPath = getConfigPath();
   if (!fs.existsSync(configPath)) {
     return { profiles: [], context: {} };
   }
+  let raw: string;
   try {
-    return JSON.parse(fs.readFileSync(configPath, "utf-8")) as SolidtimeConfig;
-  } catch {
-    return { profiles: [], context: {} };
+    raw = fs.readFileSync(configPath, "utf-8");
+  } catch (err) {
+    throw describeConfigError(err, configPath, "read");
   }
+  return JSON.parse(raw) as SolidtimeConfig;
 }
 
 export function saveConfig(config: SolidtimeConfig): void {
@@ -50,10 +63,14 @@ export function saveConfig(config: SolidtimeConfig): void {
     restrictPermissions(dir, CONFIG_DIR_MODE);
   }
 
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), {
-    encoding: "utf-8",
-    mode: CONFIG_FILE_MODE,
-  });
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), {
+      encoding: "utf-8",
+      mode: CONFIG_FILE_MODE,
+    });
+  } catch (err) {
+    throw describeConfigError(err, configPath, "write");
+  }
   restrictPermissions(configPath, CONFIG_FILE_MODE);
 }
 

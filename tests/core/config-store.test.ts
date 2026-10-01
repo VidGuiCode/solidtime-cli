@@ -73,4 +73,22 @@ describe("config-store", () => {
     expect(fs.statSync(getConfigDir()).mode & 0o777).toBe(0o700);
     expect(fs.statSync(getConfigPath()).mode & 0o777).toBe(0o600);
   });
+
+  it("throws a clear error when the config file cannot be written", async () => {
+    tempDir = setupTempConfigDir();
+    const { saveConfig, getConfigPath } = await importConfigStore();
+
+    saveConfig({ profiles: [], context: {} });
+    fs.chmodSync(getConfigPath(), 0o444);
+
+    try {
+      const config: SolidtimeConfig = {
+        profiles: [{ name: "x", baseUrl: "https://x.example.com", token: "t" }],
+        context: {},
+      };
+      expect(() => saveConfig(config)).toThrow(/Cannot write config file/);
+    } finally {
+      fs.chmodSync(getConfigPath(), 0o644);
+    }
+  });
 });
