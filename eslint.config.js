@@ -9,12 +9,13 @@ export default tseslint.config(
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        project: true,
+        projectService: {
+          allowDefaultProject: ["tests/*/*.ts"],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },
     rules: {
-      "import/extensions": "off",
       "@typescript-eslint/explicit-function-return-type": "off",
       "@typescript-eslint/explicit-module-boundary-types": "off",
       "@typescript-eslint/no-explicit-any": "off",
