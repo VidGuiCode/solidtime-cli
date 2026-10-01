@@ -17,6 +17,19 @@ export async function ask(question: string, defaultValue?: string): Promise<stri
   return answer.trim() || defaultValue || "";
 }
 
+export async function confirm(question: string): Promise<boolean> {
+  if (isNonInteractiveMode()) {
+    throw new NonInteractiveError(
+      `Confirmation required for '${question}' but running in non-interactive mode.`,
+    );
+  }
+  const rl = readline.createInterface({ input, output });
+  const answer = await rl.question(`${question} [y/N]: `);
+  rl.close();
+  const normalized = answer.trim().toLowerCase();
+  return normalized === "y" || normalized === "yes";
+}
+
 export async function pickOne(prompt: string, items: string[]): Promise<number> {
   if (isNonInteractiveMode()) {
     throw new NonInteractiveError(`Cannot prompt for '${prompt}' in non-interactive mode.`);
