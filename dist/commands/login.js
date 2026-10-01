@@ -5,6 +5,7 @@ import { printJson } from "../core/output.js";
 import { ask, pickOne } from "../core/prompt.js";
 import { exitWithError, ValidationError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
+const BASE_URL_PROMPT = "Solidtime base URL (e.g. https://solidtime.example.com or https://app.solidtime.io)";
 export function createLoginCommand() {
     return new Command("login")
         .description("Connect to a Solidtime instance and save credentials")
@@ -37,12 +38,12 @@ export function createLoginCommand() {
                     }
                 }
                 else {
-                    baseUrl = await ask("Solidtime base URL (e.g. https://timesheet.example.com)");
+                    baseUrl = await ask(BASE_URL_PROMPT);
                     token = await ask("API token");
                 }
             }
             else {
-                baseUrl = await ask("Solidtime base URL (e.g. https://timesheet.example.com)");
+                baseUrl = await ask(BASE_URL_PROMPT);
                 token = await ask("API token");
             }
             if (!baseUrl)

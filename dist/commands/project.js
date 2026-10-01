@@ -1,9 +1,9 @@
 import { Command } from "commander";
 import { createClient, loadConfig, requireActiveOrganization } from "../core/config-store.js";
 import { printInfo, printJson, printTable } from "../core/output.js";
-import { exitWithError } from "../core/errors.js";
+import { exitWithError, ValidationError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
-import { unwrap } from "../core/api-client.js";
+import { fetchAll } from "../core/api-client.js";
 function formatDuration(seconds) {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
@@ -21,13 +21,12 @@ export function createProjectCommand() {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
-            const params = [];
+            const params = new URLSearchParams();
             if (opts.archived)
-                params.push("filter[archived]=true");
-            const path = `organizations/${org}/projects` +
-                (params.length > 0 ? `?${params.join("&")}` : "");
-            const res = await client.get(path);
-            const projects = unwrap(res);
+                params.append("filter[archived]", "true");
+            const query = params.toString();
+            const path = `organizations/${org}/projects` + (query ? `?${query}` : "");
+            const projects = await fetchAll(client, path);
             if (opts.json) {
                 printJson(projects);
                 return;
@@ -93,13 +92,16 @@ export function createProjectCommand() {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
-            const body = { client_id: null };
+            const body = {};
             if (opts.name)
                 body.name = opts.name;
             if (opts.color)
                 body.color = opts.color;
             if (opts.billable !== undefined)
                 body.is_billable = opts.billable;
+            if (Object.keys(body).length === 0) {
+                throw new ValidationError("No fields to update provided.");
+            }
             if (isDryRunEnabled()) {
                 printJson({ dryRun: true, action: "project.update", id, body });
                 return;

@@ -10,4 +10,7 @@ export function isNonInteractiveMode() {
 export function isCompactMode() {
     return hasArg("--compact");
 }
+export function wantsJson(opts) {
+    return Boolean(opts?.json) || isCompactMode();
+}
 //# sourceMappingURL=runtime.js.map

@@ -19,19 +19,14 @@ export function createClientCommand() {
             const params = [];
             if (opts.archived)
                 params.push("filter[archived]=true");
-            const path = `organizations/${org}/clients` +
-                (params.length > 0 ? `?${params.join("&")}` : "");
+            const path = `organizations/${org}/clients` + (params.length > 0 ? `?${params.join("&")}` : "");
             const res = await client.get(path);
             const clients = unwrap(res);
             if (opts.json) {
                 printJson(clients);
                 return;
             }
-            const rows = clients.map((c) => [
-                c.name,
-                c.is_archived ? "archived" : "",
-                c.id,
-            ]);
+            const rows = clients.map((c) => [c.name, c.is_archived ? "archived" : "", c.id]);
             printTable(rows, ["Name", "Status", "ID"]);
         }
         catch (err) {

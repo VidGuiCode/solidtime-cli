@@ -22,9 +22,7 @@ export function createWhereCommand() {
                     schemaVersion: 1,
                     kind: "context",
                     context: {
-                        account: account
-                            ? { name: account.name, baseUrl: account.baseUrl }
-                            : null,
+                        account: account ? { name: account.name, baseUrl: account.baseUrl } : null,
                         organization: config.context.activeOrganization ?? null,
                         user: user
                             ? {

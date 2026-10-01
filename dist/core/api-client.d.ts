@@ -15,6 +15,11 @@ export declare class SolidtimeApiRateLimitError extends SolidtimeApiError {
     readonly retryAfter: number | null;
     constructor(status: number, message: string, retryAfter: number | null, method?: string, path?: string, details?: unknown);
 }
+/** True when a failed request may still have been processed by the server:
+ * a 5xx response, or a connection drop after the request was sent. Callers
+ * doing non-idempotent writes should check for an existing entry before
+ * retrying. */
+export declare function mayHaveReachedServer(error: unknown): boolean;
 export declare class SolidtimeApiClient {
     private readonly options;
     private readonly maxRetries;

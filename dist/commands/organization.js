@@ -53,8 +53,7 @@ export function createOrganizationCommand() {
             const res = await client.get("users/me/memberships");
             const memberships = res.data;
             const lower = nameOrId.toLowerCase();
-            const match = memberships.find((m) => m.organization.id === nameOrId ||
-                m.organization.name.toLowerCase() === lower);
+            const match = memberships.find((m) => m.organization.id === nameOrId || m.organization.name.toLowerCase() === lower);
             if (!match) {
                 throw new ValidationError(`Organization "${nameOrId}" not found. Run: solidtime organization list`);
             }
@@ -135,6 +134,9 @@ export function createOrganizationCommand() {
                 body.billable_rate = parseInt(opts.billableRate, 10);
             if (opts.preventOverlappingTimeEntries !== undefined)
                 body.prevent_overlapping_time_entries = opts.preventOverlappingTimeEntries;
+            if (Object.keys(body).length === 0) {
+                throw new ValidationError("No fields to update provided.");
+            }
             if (isDryRunEnabled()) {
                 printJson({ dryRun: true, action: "organization.update", body });
                 return;

@@ -10,9 +10,7 @@ export function createProfileCommand() {
         try {
             const config = loadConfig();
             const client = createClient(config);
-            const user = await client
-                .get("users/me")
-                .then((r) => r.data);
+            const user = await client.get("users/me").then((r) => r.data);
             if (opts.json) {
                 printJson(user);
                 return;

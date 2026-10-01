@@ -1,1 +1,1 @@
-{"version":3,"file":"login.d.ts","sourceRoot":"","sources":["../../src/commands/login.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,OAAO,EAAE,MAAM,WAAW,CAAC;AASpC,wBAAgB,kBAAkB,IAAI,OAAO,CAuJ5C"}
+{"version":3,"file":"login.d.ts","sourceRoot":"","sources":["../../src/commands/login.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,OAAO,EAAE,MAAM,WAAW,CAAC;AAYpC,wBAAgB,kBAAkB,IAAI,OAAO,CAuJ5C"}

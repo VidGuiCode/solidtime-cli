@@ -3,6 +3,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { SolidtimeApiClient } from "./api-client.js";
 import { printError } from "./output.js";
+import { ValidationError } from "./errors.js";
 export const DEFAULT_CONFIG = {
     profiles: [],
     context: {},
@@ -18,16 +19,33 @@ export function getConfigPath() {
     }
     return path.join(getConfigDir(), "config.json");
 }
+function describeConfigError(err, configPath, action) {
+    const code = err instanceof Error ? err.code : undefined;
+    if (code === "EACCES" || code === "EPERM") {
+        return new Error(`Cannot ${action} config file (permission denied): ${configPath}. ` +
+            `Fix the file permissions or set SOLIDTIME_CONFIG to a ${action === "read" ? "readable" : "writable"} path.`);
+    }
+    return err instanceof Error ? err : new Error(String(err));
+}
 export function loadConfig() {
     const configPath = getConfigPath();
     if (!fs.existsSync(configPath)) {
         return { profiles: [], context: {} };
     }
+    let raw;
     try {
-        return JSON.parse(fs.readFileSync(configPath, "utf-8"));
+        raw = fs.readFileSync(configPath, "utf-8");
+    }
+    catch (err) {
+        throw describeConfigError(err, configPath, "read");
+    }
+    try {
+        return JSON.parse(raw);
     }
     catch {
-        return { profiles: [], context: {} };
+        // Never fall back to an empty config: the next saveConfig() would wipe
+        // every saved account.
+        throw new ValidationError(`Config file is not valid JSON: ${configPath}. Fix or delete the file, then run: solidtime login`);
     }
 }
 export function saveConfig(config) {
@@ -41,10 +59,15 @@ export function saveConfig(config) {
     if (shouldRestrictDir) {
         restrictPermissions(dir, CONFIG_DIR_MODE);
     }
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), {
-        encoding: "utf-8",
-        mode: CONFIG_FILE_MODE,
-    });
+    try {
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), {
+            encoding: "utf-8",
+            mode: CONFIG_FILE_MODE,
+        });
+    }
+    catch (err) {
+        throw describeConfigError(err, configPath, "write");
+    }
     restrictPermissions(configPath, CONFIG_FILE_MODE);
 }
 function restrictPermissions(targetPath, mode) {

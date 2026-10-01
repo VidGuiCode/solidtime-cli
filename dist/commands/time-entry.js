@@ -1,10 +1,12 @@
 import { Command } from "commander";
 import { createClient, loadConfig, requireActiveOrganization, requireActiveMemberId, } from "../core/config-store.js";
 import { printJson, printTable } from "../core/output.js";
-import { exitWithError } from "../core/errors.js";
+import { exitWithError, ValidationError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
 import { normalizeDateTime, toUTCString } from "../core/datetime.js";
 import { unwrap, SolidtimeApiError } from "../core/api-client.js";
+import { createTimeEntryWithDedupe } from "../core/time-entries.js";
+import { resolveProject, resolveProjectIds, resolveTask, resolveTaskIds, resolveTagIds, } from "../core/resolve.js";
 function formatDuration(seconds) {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
@@ -14,19 +16,18 @@ function formatDate(iso) {
     return new Date(iso).toLocaleString();
 }
 export function createTimeEntryCommand() {
-    const cmd = new Command("time-entry")
-        .alias("te")
-        .description("Manage time entries");
+    const cmd = new Command("time-entry").alias("te").description("Manage time entries");
     cmd
         .command("list")
         .description("List time entries")
         .option("--json", "Output raw JSON")
         .option("--member <id>", "Filter by member ID")
-        .option("--project <id>", "Filter by single project ID")
-        .option("--projects <ids...>", "Filter by project IDs (space-separated)")
+        .option("--mine", "Filter by the active member")
+        .option("--project <id|name>", "Filter by single project ID or name")
+        .option("--projects <ids...>", "Filter by project IDs or names (space-separated)")
         .option("--clients <ids...>", "Filter by client IDs (space-separated)")
-        .option("--tasks <ids...>", "Filter by task IDs (space-separated)")
-        .option("--tags <ids...>", "Filter by tag IDs (space-separated)")
+        .option("--tasks <ids...>", "Filter by task IDs or names (space-separated)")
+        .option("--tags <ids...>", "Filter by tag IDs or names (space-separated)")
         .option("--start <datetime>", "Filter after this time (e.g. 2026-04-01T00:00:00Z or +02:00)")
         .option("--end <datetime>", "Filter before this time (e.g. 2026-04-01T23:59:59Z or +02:00)")
         .option("--active", "Only active (running) entries")
@@ -40,39 +41,42 @@ export function createTimeEntryCommand() {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
-            const params = [];
-            if (opts.member)
-                params.push(`member_id=${opts.member}`);
-            if (opts.project)
-                params.push(`project_ids[]=${opts.project}`);
-            if (opts.projects)
-                for (const id of opts.projects)
-                    params.push(`project_ids[]=${id}`);
+            const projectFilter = [...(opts.project ? [opts.project] : []), ...(opts.projects ?? [])];
+            const taskFilter = opts.tasks ?? [];
+            const tagFilter = opts.tags ?? [];
+            const projectIds = projectFilter.length > 0 ? await resolveProjectIds(client, org, projectFilter) : [];
+            const taskIds = taskFilter.length > 0 ? await resolveTaskIds(client, org, taskFilter) : [];
+            const tagIds = tagFilter.length > 0 ? await resolveTagIds(client, org, tagFilter) : [];
+            const params = new URLSearchParams();
+            if (opts.mine)
+                params.append("member_id", requireActiveMemberId(config));
+            else if (opts.member)
+                params.append("member_id", opts.member);
+            for (const id of projectIds)
+                params.append("project_ids[]", id);
             if (opts.clients)
                 for (const id of opts.clients)
-                    params.push(`client_ids[]=${id}`);
-            if (opts.tasks)
-                for (const id of opts.tasks)
-                    params.push(`task_ids[]=${id}`);
-            if (opts.tags)
-                for (const id of opts.tags)
-                    params.push(`tag_ids[]=${id}`);
+                    params.append("client_ids[]", id);
+            for (const id of taskIds)
+                params.append("task_ids[]", id);
+            for (const id of tagIds)
+                params.append("tag_ids[]", id);
             if (opts.start)
-                params.push(`start=${normalizeDateTime(opts.start)}`);
+                params.append("start", normalizeDateTime(opts.start));
             if (opts.end)
-                params.push(`end=${normalizeDateTime(opts.end)}`);
+                params.append("end", normalizeDateTime(opts.end));
             if (opts.active)
-                params.push("active=true");
+                params.append("active", "true");
             if (opts.billable !== undefined)
-                params.push(`billable=${opts.billable}`);
+                params.append("billable", String(opts.billable));
             if (opts.limit)
-                params.push(`limit=${opts.limit}`);
+                params.append("limit", opts.limit);
             if (opts.offset)
-                params.push(`offset=${opts.offset}`);
+                params.append("offset", opts.offset);
             if (opts.onlyFullDates)
-                params.push("only_full_dates=true");
-            const path = `organizations/${org}/time-entries` +
-                (params.length > 0 ? `?${params.join("&")}` : "");
+                params.append("only_full_dates", "true");
+            const query = params.toString();
+            const path = `organizations/${org}/time-entries` + (query ? `?${query}` : "");
             const res = await client.get(path);
             const entries = unwrap(res);
             if (opts.json) {
@@ -96,9 +100,10 @@ export function createTimeEntryCommand() {
         .command("start")
         .description("Start a new time entry (timer)")
         .requiredOption("--description <text>", "Description")
-        .option("--project <id>", "Project ID")
-        .option("--task <id>", "Task ID")
-        .option("--tags <ids...>", "Tag IDs (space-separated)")
+        .option("--project <id|name>", "Project ID or name")
+        .option("--task <id|name>", "Task ID or name")
+        .option("--tags <ids...>", "Tag IDs or names (space-separated)")
+        .option("--create-missing-tags", "Create tags that do not exist yet")
         .option("--billable", "Mark as billable")
         .option("--json", "Output raw JSON")
         .action(async (opts) => {
@@ -107,12 +112,19 @@ export function createTimeEntryCommand() {
             const client = createClient(config);
             const org = requireActiveOrganization(config);
             const memberId = requireActiveMemberId(config);
+            const projectId = opts.project ? await resolveProject(client, org, opts.project) : null;
+            const taskId = opts.task ? await resolveTask(client, org, opts.task, projectId) : null;
+            const tagIds = opts.tags
+                ? await resolveTagIds(client, org, opts.tags, {
+                    createMissing: Boolean(opts.createMissingTags),
+                })
+                : [];
             const body = {
                 member_id: memberId,
                 description: opts.description,
-                project_id: opts.project ?? null,
-                task_id: opts.task ?? null,
-                tags: opts.tags ?? [],
+                project_id: projectId,
+                task_id: taskId,
+                tags: tagIds,
                 billable: opts.billable ?? false,
                 start: toUTCString(new Date()),
                 end: null,
@@ -168,9 +180,10 @@ export function createTimeEntryCommand() {
         .requiredOption("--description <text>", "Description")
         .requiredOption("--start <iso>", "Start time (e.g. 2026-04-01T09:00:00Z or +02:00)")
         .requiredOption("--end <iso>", "End time (e.g. 2026-04-01T17:00:00Z or +02:00)")
-        .option("--project <id>", "Project ID")
-        .option("--task <id>", "Task ID")
-        .option("--tags <ids...>", "Tag IDs (space-separated)")
+        .option("--project <id|name>", "Project ID or name")
+        .option("--task <id|name>", "Task ID or name")
+        .option("--tags <ids...>", "Tag IDs or names (space-separated)")
+        .option("--create-missing-tags", "Create tags that do not exist yet")
         .option("--billable", "Mark as billable")
         .option("--json", "Output raw JSON")
         .action(async (opts) => {
@@ -179,26 +192,36 @@ export function createTimeEntryCommand() {
             const client = createClient(config);
             const org = requireActiveOrganization(config);
             const memberId = requireActiveMemberId(config);
+            const projectId = opts.project ? await resolveProject(client, org, opts.project) : null;
+            const taskId = opts.task ? await resolveTask(client, org, opts.task, projectId) : null;
+            const tagIds = opts.tags
+                ? await resolveTagIds(client, org, opts.tags, {
+                    createMissing: Boolean(opts.createMissingTags),
+                })
+                : [];
             const body = {
                 member_id: memberId,
                 description: opts.description,
                 start: normalizeDateTime(opts.start),
                 end: normalizeDateTime(opts.end),
-                project_id: opts.project ?? null,
-                task_id: opts.task ?? null,
-                tags: opts.tags ?? [],
+                project_id: projectId,
+                task_id: taskId,
+                tags: tagIds,
                 billable: opts.billable ?? false,
             };
             if (isDryRunEnabled()) {
                 printJson({ dryRun: true, action: "time-entry.create", body });
                 return;
             }
-            const res = await client.post(`organizations/${org}/time-entries`, body);
+            const { entry, deduped } = await createTimeEntryWithDedupe(client, org, body);
             if (opts.json) {
-                printJson(res.data);
+                printJson(entry);
                 return;
             }
-            console.log(`Created: ${res.data.description} (${formatDuration(res.data.duration)})`);
+            if (deduped) {
+                console.log(`Found existing entry with the same start and description — not creating a duplicate:`);
+            }
+            console.log(`Created: ${entry.description} (${formatDuration(entry.duration)})`);
         }
         catch (err) {
             exitWithError(err, Boolean(opts.json));
@@ -209,9 +232,12 @@ export function createTimeEntryCommand() {
         .description("Update a time entry")
         .argument("<id>", "Time entry ID")
         .option("--description <text>", "New description")
-        .option("--project <id>", "Project ID")
-        .option("--task <id>", "Task ID")
-        .option("--tags <ids...>", "Tag IDs (space-separated)")
+        .option("--project <id|name>", "Project ID or name")
+        .option("--no-project", "Clear the project")
+        .option("--task <id|name>", "Task ID or name")
+        .option("--no-task", "Clear the task")
+        .option("--tags <ids...>", "Tag IDs or names (space-separated)")
+        .option("--create-missing-tags", "Create tags that do not exist yet")
         .option("--start <iso>", "Start time (e.g. 2026-04-01T09:00:00Z or +02:00)")
         .option("--end <iso>", "End time (e.g. 2026-04-01T17:00:00Z or +02:00)")
         .option("--billable", "Mark as billable")
@@ -223,21 +249,39 @@ export function createTimeEntryCommand() {
             const client = createClient(config);
             const org = requireActiveOrganization(config);
             const memberId = requireActiveMemberId(config);
+            // Commander turns `--project` and `--no-project` into boolean `false`
+            // when neither is given, so only a string value means "set it".
+            const projectId = typeof opts.project === "string" ? await resolveProject(client, org, opts.project) : null;
+            const taskId = typeof opts.task === "string"
+                ? await resolveTask(client, org, opts.task, projectId)
+                : null;
+            const tagIds = opts.tags
+                ? await resolveTagIds(client, org, opts.tags, {
+                    createMissing: Boolean(opts.createMissingTags),
+                })
+                : null;
             const body = { member_id: memberId };
             if (opts.description)
                 body.description = opts.description;
-            if (opts.project)
-                body.project_id = opts.project;
-            if (opts.task)
-                body.task_id = opts.task;
-            if (opts.tags)
-                body.tags = opts.tags;
+            if (opts.project === false)
+                body.project_id = null;
+            else if (projectId)
+                body.project_id = projectId;
+            if (opts.task === false)
+                body.task_id = null;
+            else if (taskId)
+                body.task_id = taskId;
+            if (tagIds)
+                body.tags = tagIds;
             if (opts.start)
                 body.start = normalizeDateTime(opts.start);
             if (opts.end)
                 body.end = normalizeDateTime(opts.end);
             if (opts.billable !== undefined)
                 body.billable = opts.billable;
+            if (Object.keys(body).length === 1 && "member_id" in body) {
+                throw new ValidationError("No fields to update provided.");
+            }
             if (isDryRunEnabled()) {
                 printJson({ dryRun: true, action: "time-entry.update", id, body });
                 return;
@@ -337,6 +381,9 @@ export function createTimeEntryCommand() {
                 changes.member_id = opts.member;
             if (opts.billable !== undefined)
                 changes.billable = opts.billable;
+            if (Object.keys(changes).length === 0) {
+                throw new ValidationError("No fields to update provided.");
+            }
             const body = { ids: opts.ids, changes };
             if (isDryRunEnabled()) {
                 printJson({ dryRun: true, action: "time-entry.bulk-update", body });
@@ -406,35 +453,66 @@ export function createTimeEntryCommand() {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
-            const params = [];
-            params.push(`group=${opts.group}`);
+            const params = new URLSearchParams();
+            params.append("group", opts.group);
             if (opts.subGroup)
-                params.push(`sub_group=${opts.subGroup}`);
+                params.append("sub_group", opts.subGroup);
             if (opts.member)
-                params.push(`member_id=${opts.member}`);
+                params.append("member_id", opts.member);
             if (opts.projects)
                 for (const id of opts.projects)
-                    params.push(`project_ids[]=${id}`);
+                    params.append("project_ids[]", id);
             if (opts.clients)
                 for (const id of opts.clients)
-                    params.push(`client_ids[]=${id}`);
+                    params.append("client_ids[]", id);
             if (opts.tasks)
                 for (const id of opts.tasks)
-                    params.push(`task_ids[]=${id}`);
+                    params.append("task_ids[]", id);
             if (opts.tags)
                 for (const id of opts.tags)
-                    params.push(`tag_ids[]=${id}`);
+                    params.append("tag_ids[]", id);
             if (opts.start)
-                params.push(`start=${normalizeDateTime(opts.start)}`);
+                params.append("start", normalizeDateTime(opts.start));
             if (opts.end)
-                params.push(`end=${normalizeDateTime(opts.end)}`);
+                params.append("end", normalizeDateTime(opts.end));
             if (opts.billable !== undefined)
-                params.push(`billable=${opts.billable}`);
+                params.append("billable", String(opts.billable));
             if (opts.fillGaps)
-                params.push("fill_gaps_in_time_groups=true");
-            const path = `organizations/${org}/time-entries/aggregate?${params.join("&")}`;
+                params.append("fill_gaps_in_time_groups", "true");
+            const query = params.toString();
+            const path = `organizations/${org}/time-entries/aggregate?${query}`;
             const res = await client.get(path);
-            printJson(res);
+            if (opts.json) {
+                printJson(res);
+                return;
+            }
+            const aggregateRows = unwrap(res);
+            if (aggregateRows.length === 0) {
+                console.log("No time entries in this period.");
+                return;
+            }
+            const table = [];
+            for (const row of aggregateRows) {
+                if (row.grouped_data && row.grouped_data.length > 0) {
+                    for (const sub of row.grouped_data) {
+                        table.push([
+                            row.key ?? "(none)",
+                            sub.key ?? "(none)",
+                            formatDuration(sub.seconds),
+                            sub.cost !== null ? String(sub.cost) : "",
+                        ]);
+                    }
+                }
+                else {
+                    table.push([
+                        row.key ?? "(none)",
+                        "",
+                        formatDuration(row.seconds),
+                        row.cost !== null ? String(row.cost) : "",
+                    ]);
+                }
+            }
+            printTable(table, ["Group", "Sub-group", "Duration", "Cost"]);
         }
         catch (err) {
             exitWithError(err, Boolean(opts.json));

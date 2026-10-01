@@ -114,6 +114,15 @@ export interface SolidtimeBulkResult {
     success: string[];
     error: string[];
 }
+/** One row of the time-entries/aggregate response. `key` is a project/task/
+ * client/user id, a tag name, or a date string depending on the group type. */
+export interface SolidtimeAggregateRow {
+    key: string | null;
+    seconds: number;
+    cost: number | null;
+    grouped_type: string | null;
+    grouped_data: SolidtimeAggregateRow[] | null;
+}
 export interface SolidtimePaginatedResponse<T> {
     data: T[];
     links: {

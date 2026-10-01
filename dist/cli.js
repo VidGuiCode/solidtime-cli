@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { createRequire } from "node:module";
 import { Command } from "commander";
+import pkg from "../package.json" with { type: "json" };
 import { createCompletionCommand } from "./commands/completion.js";
 import { createLoginCommand } from "./commands/login.js";
 import { createLogoutCommand } from "./commands/logout.js";
@@ -9,6 +9,8 @@ import { createWhereCommand } from "./commands/where.js";
 import { createOrganizationCommand } from "./commands/organization.js";
 import { createProjectCommand } from "./commands/project.js";
 import { createTimeEntryCommand } from "./commands/time-entry.js";
+import { createTrackCommand } from "./commands/track.js";
+import { createReportCommand } from "./commands/report.js";
 import { createTaskCommand } from "./commands/task.js";
 import { createTagCommand } from "./commands/tag.js";
 import { createMemberCommand } from "./commands/member.js";
@@ -19,8 +21,7 @@ import { createDiscoverCommand } from "./commands/discover.js";
 import { createProfileCommand } from "./commands/profile.js";
 import { createUpgradeCommand, fetchLatestVersion, isNewer } from "./commands/upgrade.js";
 import { configureHelp } from "./core/help.js";
-const require = createRequire(import.meta.url);
-const pkg = require("../package.json");
+import { wantsJson } from "./core/runtime.js";
 const SPLASH = `
     ╔═══════════╗
     ║ SOLIDTIME ║   solidtime-cli
@@ -48,6 +49,12 @@ program
     console.log(`  AI start: solidtime discover context\n`);
     program.help();
 });
+program.hook("preAction", (_thisCommand, actionCommand) => {
+    if (wantsJson(actionCommand.opts()) &&
+        actionCommand.options.some((opt) => opt.long === "--json")) {
+        actionCommand.setOptionValue("json", true);
+    }
+});
 program.addCommand(createLoginCommand());
 program.addCommand(createLogoutCommand());
 program.addCommand(createCompletionCommand(program));
@@ -57,6 +64,8 @@ program.addCommand(createOrganizationCommand());
 program.addCommand(createDiscoverCommand());
 program.addCommand(createProjectCommand());
 program.addCommand(createTimeEntryCommand());
+program.addCommand(createTrackCommand());
+program.addCommand(createReportCommand());
 program.addCommand(createTaskCommand());
 program.addCommand(createTagCommand());
 program.addCommand(createMemberCommand());

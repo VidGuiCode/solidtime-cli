@@ -14,6 +14,16 @@ export async function ask(question, defaultValue) {
     rl.close();
     return answer.trim() || defaultValue || "";
 }
+export async function confirm(question) {
+    if (isNonInteractiveMode()) {
+        throw new NonInteractiveError(`Confirmation required for '${question}' but running in non-interactive mode.`);
+    }
+    const rl = readline.createInterface({ input, output });
+    const answer = await rl.question(`${question} [y/N]: `);
+    rl.close();
+    const normalized = answer.trim().toLowerCase();
+    return normalized === "y" || normalized === "yes";
+}
 export async function pickOne(prompt, items) {
     if (isNonInteractiveMode()) {
         throw new NonInteractiveError(`Cannot prompt for '${prompt}' in non-interactive mode.`);

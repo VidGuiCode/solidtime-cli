@@ -5,9 +5,7 @@ import { exitWithError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
 import { unwrap } from "../core/api-client.js";
 export function createProjectMemberCommand() {
-    const cmd = new Command("project-member")
-        .alias("pm")
-        .description("Manage project members");
+    const cmd = new Command("project-member").alias("pm").description("Manage project members");
     cmd
         .command("list")
         .description("List members of a project")
