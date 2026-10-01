@@ -7,9 +7,7 @@ import { unwrap } from "../core/api-client.js";
 import type { SolidtimeProjectMember } from "../core/types.js";
 
 export function createProjectMemberCommand(): Command {
-  const cmd = new Command("project-member")
-    .alias("pm")
-    .description("Manage project members");
+  const cmd = new Command("project-member").alias("pm").description("Manage project members");
 
   cmd
     .command("list")

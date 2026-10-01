@@ -137,8 +137,7 @@ export class SolidtimeApiClient {
       } catch (error) {
         if (error instanceof TypeError || error instanceof Error) {
           const isNetworkError =
-            error instanceof TypeError ||
-            (error instanceof Error && error.name === "AbortError");
+            error instanceof TypeError || (error instanceof Error && error.name === "AbortError");
 
           if (isNetworkError && attempt < this.maxRetries) {
             const delay = this.calculateDelay(attempt, null);
@@ -250,7 +249,12 @@ export class SolidtimeApiClient {
 /** Unwrap Solidtime's { data: T[] } paginated response. */
 export function unwrap<T>(res: unknown): T[] {
   if (Array.isArray(res)) return res;
-  if (res && typeof res === "object" && "data" in res && Array.isArray((res as { data: T[] }).data)) {
+  if (
+    res &&
+    typeof res === "object" &&
+    "data" in res &&
+    Array.isArray((res as { data: T[] }).data)
+  ) {
     return (res as { data: T[] }).data;
   }
   return [];

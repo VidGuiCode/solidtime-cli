@@ -75,10 +75,7 @@ export function createTaskCommand(): Command {
           return;
         }
 
-        const res = await client.post<{ data: SolidtimeTask }>(
-          `organizations/${org}/tasks`,
-          body,
-        );
+        const res = await client.post<{ data: SolidtimeTask }>(`organizations/${org}/tasks`, body);
 
         if (opts.json) {
           printJson(res.data);

@@ -23,9 +23,7 @@ function formatDate(iso: string): string {
 }
 
 export function createTimeEntryCommand(): Command {
-  const cmd = new Command("time-entry")
-    .alias("te")
-    .description("Manage time entries");
+  const cmd = new Command("time-entry").alias("te").description("Manage time entries");
 
   cmd
     .command("list")
@@ -255,7 +253,7 @@ export function createTimeEntryCommand(): Command {
         if (opts.end) body.end = normalizeDateTime(opts.end);
         if (opts.billable !== undefined) body.billable = opts.billable;
 
-        if (Object.keys(body).length === 1 && 'member_id' in body) {
+        if (Object.keys(body).length === 1 && "member_id" in body) {
           throw new ValidationError("No fields to update provided.");
         }
 
@@ -318,9 +316,7 @@ export function createTimeEntryCommand(): Command {
         const config = loadConfig();
         const client = createClient(config);
 
-        const res = await client.get<{ data: SolidtimeTimeEntry }>(
-          "users/me/time-entries/active",
-        );
+        const res = await client.get<{ data: SolidtimeTimeEntry }>("users/me/time-entries/active");
         const entry = res.data;
 
         if (opts.json) {

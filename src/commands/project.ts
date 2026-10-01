@@ -28,7 +28,7 @@ export function createProjectCommand(): Command {
 
         const params = new URLSearchParams();
         if (opts.archived) params.append("filter[archived]", "true");
-        
+
         const query = params.toString();
         const path = `organizations/${org}/projects` + (query ? `?${query}` : "");
 

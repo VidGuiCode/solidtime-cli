@@ -51,10 +51,7 @@ export function createTagCommand(): Command {
           return;
         }
 
-        const res = await client.post<{ data: SolidtimeTag }>(
-          `organizations/${org}/tags`,
-          body,
-        );
+        const res = await client.post<{ data: SolidtimeTag }>(`organizations/${org}/tags`, body);
 
         if (opts.json) {
           printJson(res.data);

@@ -25,9 +25,7 @@ export function createOrganizationCommand(): Command {
         const config = loadConfig();
         const client = createClient(config);
 
-        const res = await client.get<{ data: SolidtimeMembership[] }>(
-          "users/me/memberships",
-        );
+        const res = await client.get<{ data: SolidtimeMembership[] }>("users/me/memberships");
         const memberships = res.data;
 
         if (opts.json) {
@@ -66,16 +64,12 @@ export function createOrganizationCommand(): Command {
         const config = loadConfig();
         const client = createClient(config);
 
-        const res = await client.get<{ data: SolidtimeMembership[] }>(
-          "users/me/memberships",
-        );
+        const res = await client.get<{ data: SolidtimeMembership[] }>("users/me/memberships");
         const memberships = res.data;
 
         const lower = nameOrId.toLowerCase();
         const match = memberships.find(
-          (m) =>
-            m.organization.id === nameOrId ||
-            m.organization.name.toLowerCase() === lower,
+          (m) => m.organization.id === nameOrId || m.organization.name.toLowerCase() === lower,
         );
 
         if (!match) {
@@ -97,9 +91,7 @@ export function createOrganizationCommand(): Command {
         }
 
         config.context.activeOrganization = match.organization.id;
-        const account = config.profiles.find(
-          (p) => p.name === config.context.activeProfile,
-        );
+        const account = config.profiles.find((p) => p.name === config.context.activeProfile);
         if (account) {
           account.memberId = match.id;
         }
@@ -133,9 +125,7 @@ export function createOrganizationCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const res = await client.get<{ data: SolidtimeOrganization }>(
-          `organizations/${org}`,
-        );
+        const res = await client.get<{ data: SolidtimeOrganization }>(`organizations/${org}`);
         const organization = res.data;
 
         if (opts.json) {
@@ -180,10 +170,7 @@ export function createOrganizationCommand(): Command {
           return;
         }
 
-        const res = await client.put<{ data: SolidtimeOrganization }>(
-          `organizations/${org}`,
-          body,
-        );
+        const res = await client.put<{ data: SolidtimeOrganization }>(`organizations/${org}`, body);
 
         if (opts.json) {
           printJson(res.data);

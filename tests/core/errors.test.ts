@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { SolidtimeApiError, SolidtimeApiRateLimitError } from "../../src/core/api-client.js";
-import { getExitCode, getErrorMessage, ValidationError, NonInteractiveError } from "../../src/core/errors.js";
+import {
+  getExitCode,
+  getErrorMessage,
+  ValidationError,
+  NonInteractiveError,
+} from "../../src/core/errors.js";
 
 describe("getExitCode", () => {
   it("returns 4 for rate limit errors", () => {

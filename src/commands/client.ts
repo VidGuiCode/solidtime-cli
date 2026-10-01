@@ -24,8 +24,7 @@ export function createClientCommand(): Command {
         if (opts.archived) params.push("filter[archived]=true");
 
         const path =
-          `organizations/${org}/clients` +
-          (params.length > 0 ? `?${params.join("&")}` : "");
+          `organizations/${org}/clients` + (params.length > 0 ? `?${params.join("&")}` : "");
 
         const res = await client.get<unknown>(path);
         const clients = unwrap<SolidtimeClient>(res);
@@ -35,11 +34,7 @@ export function createClientCommand(): Command {
           return;
         }
 
-        const rows = clients.map((c) => [
-          c.name,
-          c.is_archived ? "archived" : "",
-          c.id,
-        ]);
+        const rows = clients.map((c) => [c.name, c.is_archived ? "archived" : "", c.id]);
         printTable(rows, ["Name", "Status", "ID"]);
       } catch (err) {
         exitWithError(err, Boolean(opts.json));

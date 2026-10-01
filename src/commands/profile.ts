@@ -13,9 +13,7 @@ export function createProfileCommand(): Command {
         const config = loadConfig();
         const client = createClient(config);
 
-        const user = await client
-          .get<{ data: SolidtimeUser }>("users/me")
-          .then((r) => r.data);
+        const user = await client.get<{ data: SolidtimeUser }>("users/me").then((r) => r.data);
 
         if (opts.json) {
           printJson(user);

@@ -33,9 +33,7 @@ export function printErrorJson(error: unknown): void {
               httpStatus: error.status,
               method: error.method,
               path: error.path,
-              ...(typeof error.details === "object" && error.details !== null
-                ? error.details
-                : {}),
+              ...(typeof error.details === "object" && error.details !== null ? error.details : {}),
             },
           }
         : error instanceof Error

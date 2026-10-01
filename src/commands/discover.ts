@@ -198,16 +198,27 @@ export function createDiscoverCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const [user, memberships, projects, tasks, tags, members, clients] =
-          await Promise.all([
-            client.get<{ data: SolidtimeUser }>("users/me").then((r) => r.data).catch(() => null),
-            client.get<{ data: SolidtimeMembership[] }>("users/me/memberships").then((r) => r.data).catch(() => []),
-            client.get<unknown>(`organizations/${org}/projects`).then((r) => unwrap<SolidtimeProject>(r)),
-            client.get<unknown>(`organizations/${org}/tasks`).then((r) => unwrap<SolidtimeTask>(r)),
-            client.get<unknown>(`organizations/${org}/tags`).then((r) => unwrap<SolidtimeTag>(r)),
-            client.get<unknown>(`organizations/${org}/members`).then((r) => unwrap<SolidtimeMember>(r)),
-            client.get<unknown>(`organizations/${org}/clients`).then((r) => unwrap<SolidtimeClient>(r)),
-          ]);
+        const [user, memberships, projects, tasks, tags, members, clients] = await Promise.all([
+          client
+            .get<{ data: SolidtimeUser }>("users/me")
+            .then((r) => r.data)
+            .catch(() => null),
+          client
+            .get<{ data: SolidtimeMembership[] }>("users/me/memberships")
+            .then((r) => r.data)
+            .catch(() => []),
+          client
+            .get<unknown>(`organizations/${org}/projects`)
+            .then((r) => unwrap<SolidtimeProject>(r)),
+          client.get<unknown>(`organizations/${org}/tasks`).then((r) => unwrap<SolidtimeTask>(r)),
+          client.get<unknown>(`organizations/${org}/tags`).then((r) => unwrap<SolidtimeTag>(r)),
+          client
+            .get<unknown>(`organizations/${org}/members`)
+            .then((r) => unwrap<SolidtimeMember>(r)),
+          client
+            .get<unknown>(`organizations/${org}/clients`)
+            .then((r) => unwrap<SolidtimeClient>(r)),
+        ]);
 
         const activeOrg = config.context.activeOrganization;
         const orgMatch = memberships.find((m) => m.organization.id === activeOrg);
@@ -233,18 +244,30 @@ export function createDiscoverCommand(): Command {
             ? { id: user.id, name: user.name, email: user.email, timezone: user.timezone }
             : null,
           projects: projects.map((p) => ({
-            id: p.id, name: p.name, color: p.color,
-            is_archived: p.is_archived, is_billable: p.is_billable,
+            id: p.id,
+            name: p.name,
+            color: p.color,
+            is_archived: p.is_archived,
+            is_billable: p.is_billable,
           })),
           tasks: tasks.map((t) => ({
-            id: t.id, name: t.name, project_id: t.project_id, is_done: t.is_done,
+            id: t.id,
+            name: t.name,
+            project_id: t.project_id,
+            is_done: t.is_done,
           })),
           tags: tags.map((t) => ({ id: t.id, name: t.name })),
           members: members.map((m) => ({
-            id: m.id, user_id: m.user_id, name: m.name, email: m.email, role: m.role,
+            id: m.id,
+            user_id: m.user_id,
+            name: m.name,
+            email: m.email,
+            role: m.role,
           })),
           clients: clients.map((c) => ({
-            id: c.id, name: c.name, is_archived: c.is_archived,
+            id: c.id,
+            name: c.name,
+            is_archived: c.is_archived,
           })),
         });
       } catch (err) {

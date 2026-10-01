@@ -7,8 +7,7 @@ import { exitWithError } from "../core/errors.js";
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json") as { version: string };
 
-const REPO_RAW =
-  "https://raw.githubusercontent.com/VidGuiCode/solidtime-cli/main/package.json";
+const REPO_RAW = "https://raw.githubusercontent.com/VidGuiCode/solidtime-cli/main/package.json";
 
 export async function fetchLatestVersion(): Promise<string | null> {
   try {

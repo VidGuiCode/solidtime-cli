@@ -52,7 +52,10 @@ program
   });
 
 program.hook("preAction", (_thisCommand, actionCommand) => {
-  if (wantsJson(actionCommand.opts()) && actionCommand.options.some((opt) => opt.long === "--json")) {
+  if (
+    wantsJson(actionCommand.opts()) &&
+    actionCommand.options.some((opt) => opt.long === "--json")
+  ) {
     actionCommand.setOptionValue("json", true);
   }
 });

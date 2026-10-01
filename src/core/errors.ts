@@ -31,7 +31,8 @@ function getStatusHint(status: number, path?: string): string | null {
       return "Access denied. You may not have permission for this resource.";
     case 404: {
       if (path?.includes("time-entries/")) return "Time entry not found.";
-      if (path?.includes("projects/")) return "Project not found. Check with: solidtime project list";
+      if (path?.includes("projects/"))
+        return "Project not found. Check with: solidtime project list";
       if (path?.includes("tasks/")) return "Task not found. Check with: solidtime task list";
       return "Resource not found. Verify the organization and resource identifiers.";
     }
