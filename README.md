@@ -154,7 +154,7 @@ Login state is stored at `~/.solidtime-cli/config.json`. This file contains your
 ## Non-Interactive Login
 
 ```bash
-solidtime login --url https://timesheet.example.com --token <jwt>
+solidtime login --url https://app.solidtime.io --token <jwt>
 ```
 
 ## License

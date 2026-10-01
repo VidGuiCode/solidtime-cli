@@ -77,7 +77,7 @@ export class SolidtimeApiClient {
       return retryAfter * 1000;
     }
     const exponentialDelay = this.baseDelay * Math.pow(2, attempt);
-    const jitter = Math.random() * 100;
+    const jitter = Math.random() * exponentialDelay;
     return exponentialDelay + jitter;
   }
 
@@ -138,8 +138,7 @@ export class SolidtimeApiClient {
         if (error instanceof TypeError || error instanceof Error) {
           const isNetworkError =
             error instanceof TypeError ||
-            error.message.includes("fetch") ||
-            error.message.includes("network");
+            (error instanceof Error && error.name === "AbortError");
 
           if (isNetworkError && attempt < this.maxRetries) {
             const delay = this.calculateDelay(attempt, null);

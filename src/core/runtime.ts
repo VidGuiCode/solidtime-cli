@@ -13,3 +13,7 @@ export function isNonInteractiveMode(): boolean {
 export function isCompactMode(): boolean {
   return hasArg("--compact");
 }
+
+export function wantsJson(opts?: { json?: boolean }): boolean {
+  return Boolean(opts?.json) || isCompactMode();
+}

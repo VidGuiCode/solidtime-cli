@@ -3,7 +3,7 @@ import { createClient, loadConfig, requireActiveOrganization } from "../core/con
 import { printJson, printTable } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
-import { unwrap } from "../core/api-client.js";
+import { fetchAll } from "../core/api-client.js";
 import type { SolidtimeTag } from "../core/types.js";
 
 export function createTagCommand(): Command {
@@ -19,8 +19,7 @@ export function createTagCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const res = await client.get<unknown>(`organizations/${org}/tags`);
-        const tags = unwrap<SolidtimeTag>(res);
+        const tags = await fetchAll<SolidtimeTag>(client, `organizations/${org}/tags`);
 
         if (opts.json) {
           printJson(tags);

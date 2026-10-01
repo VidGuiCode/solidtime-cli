@@ -6,7 +6,7 @@ import {
   requireActiveMemberId,
 } from "../core/config-store.js";
 import { printJson, printTable } from "../core/output.js";
-import { exitWithError } from "../core/errors.js";
+import { exitWithError, ValidationError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
 import { normalizeDateTime, toUTCString } from "../core/datetime.js";
 import { unwrap, SolidtimeApiError } from "../core/api-client.js";
@@ -51,24 +51,23 @@ export function createTimeEntryCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const params: string[] = [];
-        if (opts.member) params.push(`member_id=${opts.member}`);
-        if (opts.project) params.push(`project_ids[]=${opts.project}`);
-        if (opts.projects) for (const id of opts.projects) params.push(`project_ids[]=${id}`);
-        if (opts.clients) for (const id of opts.clients) params.push(`client_ids[]=${id}`);
-        if (opts.tasks) for (const id of opts.tasks) params.push(`task_ids[]=${id}`);
-        if (opts.tags) for (const id of opts.tags) params.push(`tag_ids[]=${id}`);
-        if (opts.start) params.push(`start=${normalizeDateTime(opts.start)}`);
-        if (opts.end) params.push(`end=${normalizeDateTime(opts.end)}`);
-        if (opts.active) params.push("active=true");
-        if (opts.billable !== undefined) params.push(`billable=${opts.billable}`);
-        if (opts.limit) params.push(`limit=${opts.limit}`);
-        if (opts.offset) params.push(`offset=${opts.offset}`);
-        if (opts.onlyFullDates) params.push("only_full_dates=true");
+        const params = new URLSearchParams();
+        if (opts.member) params.append("member_id", opts.member);
+        if (opts.project) params.append("project_ids[]", opts.project);
+        if (opts.projects) for (const id of opts.projects) params.append("project_ids[]", id);
+        if (opts.clients) for (const id of opts.clients) params.append("client_ids[]", id);
+        if (opts.tasks) for (const id of opts.tasks) params.append("task_ids[]", id);
+        if (opts.tags) for (const id of opts.tags) params.append("tag_ids[]", id);
+        if (opts.start) params.append("start", normalizeDateTime(opts.start));
+        if (opts.end) params.append("end", normalizeDateTime(opts.end));
+        if (opts.active) params.append("active", "true");
+        if (opts.billable !== undefined) params.append("billable", String(opts.billable));
+        if (opts.limit) params.append("limit", opts.limit);
+        if (opts.offset) params.append("offset", opts.offset);
+        if (opts.onlyFullDates) params.append("only_full_dates", "true");
 
-        const path =
-          `organizations/${org}/time-entries` +
-          (params.length > 0 ? `?${params.join("&")}` : "");
+        const query = params.toString();
+        const path = `organizations/${org}/time-entries` + (query ? `?${query}` : "");
 
         const res = await client.get<unknown>(path);
         const entries = unwrap<SolidtimeTimeEntry>(res);
@@ -256,6 +255,10 @@ export function createTimeEntryCommand(): Command {
         if (opts.end) body.end = normalizeDateTime(opts.end);
         if (opts.billable !== undefined) body.billable = opts.billable;
 
+        if (Object.keys(body).length === 1 && 'member_id' in body) {
+          throw new ValidationError("No fields to update provided.");
+        }
+
         if (isDryRunEnabled()) {
           printJson({ dryRun: true, action: "time-entry.update", id, body });
           return;
@@ -366,6 +369,10 @@ export function createTimeEntryCommand(): Command {
         if (opts.member) changes.member_id = opts.member;
         if (opts.billable !== undefined) changes.billable = opts.billable;
 
+        if (Object.keys(changes).length === 0) {
+          throw new ValidationError("No fields to update provided.");
+        }
+
         const body = { ids: opts.ids, changes };
 
         if (isDryRunEnabled()) {
@@ -454,20 +461,21 @@ export function createTimeEntryCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const params: string[] = [];
-        params.push(`group=${opts.group}`);
-        if (opts.subGroup) params.push(`sub_group=${opts.subGroup}`);
-        if (opts.member) params.push(`member_id=${opts.member}`);
-        if (opts.projects) for (const id of opts.projects) params.push(`project_ids[]=${id}`);
-        if (opts.clients) for (const id of opts.clients) params.push(`client_ids[]=${id}`);
-        if (opts.tasks) for (const id of opts.tasks) params.push(`task_ids[]=${id}`);
-        if (opts.tags) for (const id of opts.tags) params.push(`tag_ids[]=${id}`);
-        if (opts.start) params.push(`start=${normalizeDateTime(opts.start)}`);
-        if (opts.end) params.push(`end=${normalizeDateTime(opts.end)}`);
-        if (opts.billable !== undefined) params.push(`billable=${opts.billable}`);
-        if (opts.fillGaps) params.push("fill_gaps_in_time_groups=true");
+        const params = new URLSearchParams();
+        params.append("group", opts.group);
+        if (opts.subGroup) params.append("sub_group", opts.subGroup);
+        if (opts.member) params.append("member_id", opts.member);
+        if (opts.projects) for (const id of opts.projects) params.append("project_ids[]", id);
+        if (opts.clients) for (const id of opts.clients) params.append("client_ids[]", id);
+        if (opts.tasks) for (const id of opts.tasks) params.append("task_ids[]", id);
+        if (opts.tags) for (const id of opts.tags) params.append("tag_ids[]", id);
+        if (opts.start) params.append("start", normalizeDateTime(opts.start));
+        if (opts.end) params.append("end", normalizeDateTime(opts.end));
+        if (opts.billable !== undefined) params.append("billable", String(opts.billable));
+        if (opts.fillGaps) params.append("fill_gaps_in_time_groups", "true");
 
-        const path = `organizations/${org}/time-entries/aggregate?${params.join("&")}`;
+        const query = params.toString();
+        const path = `organizations/${org}/time-entries/aggregate?${query}`;
         const res = await client.get<unknown>(path);
 
         printJson(res);

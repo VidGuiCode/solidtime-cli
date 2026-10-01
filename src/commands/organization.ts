@@ -171,6 +171,10 @@ export function createOrganizationCommand(): Command {
         if (opts.preventOverlappingTimeEntries !== undefined)
           body.prevent_overlapping_time_entries = opts.preventOverlappingTimeEntries;
 
+        if (Object.keys(body).length === 0) {
+          throw new ValidationError("No fields to update provided.");
+        }
+
         if (isDryRunEnabled()) {
           printJson({ dryRun: true, action: "organization.update", body });
           return;

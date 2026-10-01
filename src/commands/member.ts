@@ -1,9 +1,9 @@
 import { Command } from "commander";
 import { createClient, loadConfig, requireActiveOrganization } from "../core/config-store.js";
 import { printJson, printTable } from "../core/output.js";
-import { exitWithError } from "../core/errors.js";
+import { exitWithError, ValidationError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
-import { unwrap } from "../core/api-client.js";
+import { fetchAll } from "../core/api-client.js";
 import type { SolidtimeMember } from "../core/types.js";
 
 export function createMemberCommand(): Command {
@@ -19,8 +19,7 @@ export function createMemberCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const res = await client.get<unknown>(`organizations/${org}/members`);
-        const members = unwrap<SolidtimeMember>(res);
+        const members = await fetchAll<SolidtimeMember>(client, `organizations/${org}/members`);
 
         if (opts.json) {
           printJson(members);
@@ -50,6 +49,10 @@ export function createMemberCommand(): Command {
         const body: Record<string, unknown> = {};
         if (opts.role) body.role = opts.role;
         if (opts.billableRate) body.billable_rate = parseInt(opts.billableRate, 10);
+
+        if (Object.keys(body).length === 0) {
+          throw new ValidationError("No fields to update provided.");
+        }
 
         if (isDryRunEnabled()) {
           printJson({ dryRun: true, action: "member.update", id, body });

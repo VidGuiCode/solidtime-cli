@@ -1,11 +1,14 @@
 import { Command } from "commander";
 import { loadConfig, saveConfig } from "../core/config-store.js";
-import { SolidtimeApiClient, unwrap } from "../core/api-client.js";
+import { SolidtimeApiClient } from "../core/api-client.js";
 import { printJson } from "../core/output.js";
 import { ask, pickOne } from "../core/prompt.js";
 import { exitWithError, ValidationError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
 import type { SolidtimeAccount, SolidtimeUser, SolidtimeMembership } from "../core/types.js";
+
+const BASE_URL_PROMPT =
+  "Solidtime base URL (e.g. https://solidtime.example.com or https://app.solidtime.io)";
 
 export function createLoginCommand(): Command {
   return new Command("login")
@@ -42,11 +45,11 @@ export function createLoginCommand(): Command {
               token = await ask("API token");
             }
           } else {
-            baseUrl = await ask("Solidtime base URL (e.g. https://timesheet.example.com)");
+            baseUrl = await ask(BASE_URL_PROMPT);
             token = await ask("API token");
           }
         } else {
-          baseUrl = await ask("Solidtime base URL (e.g. https://timesheet.example.com)");
+          baseUrl = await ask(BASE_URL_PROMPT);
           token = await ask("API token");
         }
 

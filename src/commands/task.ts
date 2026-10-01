@@ -1,9 +1,9 @@
 import { Command } from "commander";
 import { createClient, loadConfig, requireActiveOrganization } from "../core/config-store.js";
 import { printJson, printTable } from "../core/output.js";
-import { exitWithError } from "../core/errors.js";
+import { exitWithError, ValidationError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
-import { unwrap } from "../core/api-client.js";
+import { fetchAll } from "../core/api-client.js";
 import type { SolidtimeTask } from "../core/types.js";
 
 function formatDuration(seconds: number): string {
@@ -27,16 +27,14 @@ export function createTaskCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const params: string[] = [];
-        if (opts.project) params.push(`project_id=${opts.project}`);
-        if (!opts.done) params.push("done=false");
+        const params = new URLSearchParams();
+        if (opts.project) params.append("project_id", opts.project);
+        if (!opts.done) params.append("done", "false");
 
-        const path =
-          `organizations/${org}/tasks` +
-          (params.length > 0 ? `?${params.join("&")}` : "");
+        const query = params.toString();
+        const path = `organizations/${org}/tasks` + (query ? `?${query}` : "");
 
-        const res = await client.get<unknown>(path);
-        const tasks = unwrap<SolidtimeTask>(res);
+        const tasks = await fetchAll<SolidtimeTask>(client, path);
 
         if (opts.json) {
           printJson(tasks);
@@ -110,6 +108,10 @@ export function createTaskCommand(): Command {
         const body: Record<string, unknown> = {};
         if (opts.name) body.name = opts.name;
         if (opts.done !== undefined) body.is_done = opts.done;
+
+        if (Object.keys(body).length === 0) {
+          throw new ValidationError("No fields to update provided.");
+        }
 
         if (isDryRunEnabled()) {
           printJson({ dryRun: true, action: "task.update", id, body });

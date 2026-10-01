@@ -45,7 +45,7 @@ describe("config-store", () => {
       profiles: [
         {
           name: "test",
-          baseUrl: "https://time.example.com",
+          baseUrl: "https://solidtime.example.com",
           token: "secret-token",
         },
       ],
