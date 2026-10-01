@@ -10,6 +10,7 @@ import { exitWithError, ValidationError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
 import { normalizeDateTime, toUTCString } from "../core/datetime.js";
 import { unwrap, SolidtimeApiError } from "../core/api-client.js";
+import { createTimeEntryWithDedupe } from "../core/time-entries.js";
 import type { SolidtimeTimeEntry } from "../core/types.js";
 
 function formatDuration(seconds: number): string {
@@ -208,17 +209,19 @@ export function createTimeEntryCommand(): Command {
           return;
         }
 
-        const res = await client.post<{ data: SolidtimeTimeEntry }>(
-          `organizations/${org}/time-entries`,
-          body,
-        );
+        const { entry, deduped } = await createTimeEntryWithDedupe(client, org, body);
 
         if (opts.json) {
-          printJson(res.data);
+          printJson(entry);
           return;
         }
 
-        console.log(`Created: ${res.data.description} (${formatDuration(res.data.duration)})`);
+        if (deduped) {
+          console.log(
+            `Found existing entry with the same start and description — not creating a duplicate:`,
+          );
+        }
+        console.log(`Created: ${entry.description} (${formatDuration(entry.duration)})`);
       } catch (err) {
         exitWithError(err, Boolean(opts.json));
       }
