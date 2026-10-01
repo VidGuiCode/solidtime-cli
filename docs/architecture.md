@@ -19,6 +19,7 @@ CLI entry (src/cli.ts)
 |--------|---------------|
 | `api-client.ts` | HTTP client with Bearer auth, retry, rate-limit handling |
 | `config-store.ts` | Read/write `~/.solidtime-cli/config.json`, env var overrides |
+| `datetime.ts` | UTC normalization of `--start`/`--end` inputs |
 | `types.ts` | All Solidtime API response types |
 | `output.ts` | JSON, table, and error output formatting |
 | `errors.ts` | Structured error handling with exit codes |

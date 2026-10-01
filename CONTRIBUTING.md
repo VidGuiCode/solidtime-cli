@@ -19,8 +19,9 @@ For development with Bun: `bun src/cli.ts`
 | `npm run dev` | Run from source with Bun |
 | `npm test` | Run tests |
 | `npm run typecheck` | Type-check without emitting |
-| `npm run lint` | Lint source files |
-| `npm run format` | Format source files |
+| `npm run lint` | Lint `src/` and `tests/` |
+| `npm run format` | Format `src/` and `tests/` with Prettier |
+| `npm run format:check` | Check Prettier formatting |
 | `npm run verify-pack` | Pack and smoke test |
 
 ## Architecture
@@ -30,7 +31,14 @@ For development with Bun: `bun src/cli.ts`
 - All commands follow the same pattern: load config, create client, call API, print output
 - Every command supports `--json` for machine-readable output
 
+## Line endings
+
+The repo enforces LF line endings via `.gitattributes`. Git converts on checkout/commit as needed; no editor configuration is required.
+
 ## Release
+
+- `dist/` is committed. Rebuild and commit it with every source change (`npm run build`).
+- The GitHub release must be published **no later than** the version bump reaches `main`: `solidtime upgrade` reads `version` from `main`'s `package.json` and downloads `releases/download/v<version>/solidtime-cli-<version>.tgz`.
 
 1. Update `CHANGELOG.md`
 2. Bump version in `package.json`
