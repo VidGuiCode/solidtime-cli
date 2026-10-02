@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 The v0.2.0 milestone: safe to run unattended.
 
