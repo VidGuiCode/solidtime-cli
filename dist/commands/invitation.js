@@ -3,7 +3,7 @@ import { createClient, loadConfig, requireActiveOrganization } from "../core/con
 import { printJson, printTable } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
-import { unwrap } from "../core/api-client.js";
+import { fetchAll } from "../core/api-client.js";
 export function createInvitationCommand() {
     const cmd = new Command("invitation")
         .alias("invite")
@@ -17,8 +17,7 @@ export function createInvitationCommand() {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
-            const res = await client.get(`organizations/${org}/invitations`);
-            const invitations = unwrap(res);
+            const invitations = await fetchAll(client, `organizations/${org}/invitations`);
             if (opts.json) {
                 printJson(invitations);
                 return;

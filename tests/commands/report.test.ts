@@ -42,6 +42,48 @@ const AGGREGATE_RESPONSE = {
   ],
 };
 
+const ENTRIES = [
+  {
+    id: "e1",
+    start: "2026-10-01T08:00:00Z",
+    end: "2026-10-01T09:00:00Z",
+    duration: 3600,
+    description: "human work",
+    task_id: null,
+    project_id: PROJECT_ID,
+    organization_id: ORG,
+    user_id: "u1",
+    tags: ["human"],
+    billable: false,
+  },
+  {
+    id: "e2",
+    start: "2026-10-01T09:00:00Z",
+    end: "2026-10-01T10:00:00Z",
+    duration: 3600,
+    description: "agent work",
+    task_id: null,
+    project_id: PROJECT_ID,
+    organization_id: ORG,
+    user_id: "u1",
+    tags: ["agent", "claude"],
+    billable: false,
+  },
+  {
+    id: "e3",
+    start: "2026-10-01T11:00:00Z",
+    end: "2026-10-01T11:30:00Z",
+    duration: 1800,
+    description: "untagged",
+    task_id: null,
+    project_id: null,
+    organization_id: ORG,
+    user_id: "u1",
+    tags: [],
+    billable: false,
+  },
+];
+
 beforeEach(() => {
   const env: Record<string, string> = {
     SOLIDTIME_BASE_URL: "https://x.example.com",
@@ -82,13 +124,30 @@ function lastJson(logs: string[]): unknown {
   return JSON.parse(logs[logs.length - 1]);
 }
 
+function pageResponse(data: unknown[]): unknown {
+  return {
+    data,
+    links: { first: null, last: null, prev: null, next: null },
+    meta: {
+      current_page: 1,
+      last_page: 1,
+      per_page: 15,
+      total: data.length,
+      from: 1,
+      to: data.length,
+    },
+  };
+}
+
 function mockFetch(): ReturnType<typeof vi.fn> {
   return vi.fn(async (url: string | URL | Request) => {
     const path = String(url instanceof Request ? url.url : url);
     if (path.includes("/time-entries/aggregate")) return jsonResponse(200, AGGREGATE_RESPONSE);
+    if (path.includes("/time-entries")) return jsonResponse(200, { data: ENTRIES });
     if (path.includes("/projects"))
-      return jsonResponse(200, {
-        data: [
+      return jsonResponse(
+        200,
+        pageResponse([
           {
             id: PROJECT_ID,
             name: "Client Work",
@@ -101,10 +160,16 @@ function mockFetch(): ReturnType<typeof vi.fn> {
             spent_time: 0,
             is_public: false,
           },
-        ],
-        links: { first: null, last: null, prev: null, next: null },
-        meta: { current_page: 1, last_page: 1, per_page: 15, total: 1, from: 1, to: 1 },
-      });
+        ]),
+      );
+    if (path.includes("/tags"))
+      return jsonResponse(
+        200,
+        pageResponse([
+          { id: "tag-agent", name: "agent", created_at: "", updated_at: "" },
+          { id: "tag-human", name: "human", created_at: "", updated_at: "" },
+        ]),
+      );
     return jsonResponse(404, { message: "not found" });
   });
 }
@@ -140,8 +205,10 @@ describe("report", () => {
     expect(untagged).toMatchObject({ project_name: "(no project)", other_seconds: 1800 });
 
     const paths = fetchMock.mock.calls.map((c) => String(c[0]));
-    expect(paths[0]).toContain("group=project");
-    expect(paths[0]).toContain("sub_group=tag");
+    // The report must NOT build totals from the aggregate endpoint's per-tag
+    // rows: multi-tag entries would be counted once per tag.
+    expect(paths.some((p) => p.includes("/time-entries/aggregate"))).toBe(false);
+    expect(paths[0]).toContain("/time-entries");
   });
 
   it("prints a readable table without --json", async () => {

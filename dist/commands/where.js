@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { createClient, loadConfig, getActiveAccount } from "../core/config-store.js";
+import { createClient, loadConfig, getActiveAccount, getActiveOrganizationId, } from "../core/config-store.js";
 import { printInfo, printJson } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
 export function createWhereCommand() {
@@ -10,7 +10,8 @@ export function createWhereCommand() {
         try {
             const config = loadConfig();
             const account = getActiveAccount(config);
-            const client = account ? createClient(config) : null;
+            const hasEnvCredentials = Boolean(process.env.SOLIDTIME_BASE_URL && process.env.SOLIDTIME_API_TOKEN);
+            const client = account || hasEnvCredentials ? createClient(config) : null;
             const user = client
                 ? await client
                     .get("users/me")
@@ -23,7 +24,7 @@ export function createWhereCommand() {
                     kind: "context",
                     context: {
                         account: account ? { name: account.name, baseUrl: account.baseUrl } : null,
-                        organization: config.context.activeOrganization ?? null,
+                        organization: getActiveOrganizationId(config),
                         user: user
                             ? {
                                 id: user.id,
@@ -37,7 +38,7 @@ export function createWhereCommand() {
                 return;
             }
             printInfo(`Account:      ${account ? `${account.name}  (${account.baseUrl})` : "-"}`);
-            printInfo(`Organization: ${config.context.activeOrganization ?? "-"}`);
+            printInfo(`Organization: ${getActiveOrganizationId(config) ?? "-"}`);
             if (user) {
                 printInfo(`User:         ${user.name} (${user.email})`);
                 printInfo(`Timezone:     ${user.timezone}`);

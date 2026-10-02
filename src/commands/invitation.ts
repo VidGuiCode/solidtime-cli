@@ -3,7 +3,7 @@ import { createClient, loadConfig, requireActiveOrganization } from "../core/con
 import { printJson, printTable } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
-import { unwrap } from "../core/api-client.js";
+import { fetchAll } from "../core/api-client.js";
 import type { SolidtimeInvitation } from "../core/types.js";
 
 export function createInvitationCommand(): Command {
@@ -21,8 +21,10 @@ export function createInvitationCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const res = await client.get<unknown>(`organizations/${org}/invitations`);
-        const invitations = unwrap<SolidtimeInvitation>(res);
+        const invitations = await fetchAll<SolidtimeInvitation>(
+          client,
+          `organizations/${org}/invitations`,
+        );
 
         if (opts.json) {
           printJson(invitations);

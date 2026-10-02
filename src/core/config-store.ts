@@ -104,8 +104,14 @@ export function requireActiveAccount(config: SolidtimeConfig): SolidtimeAccount 
   return account;
 }
 
+/** The effective organization: the SOLIDTIME_ORGANIZATION override wins over
+ * the saved context. Null when neither is set. */
+export function getActiveOrganizationId(config: SolidtimeConfig): string | null {
+  return process.env.SOLIDTIME_ORGANIZATION ?? config.context.activeOrganization ?? null;
+}
+
 export function requireActiveOrganization(config: SolidtimeConfig): string {
-  const org = process.env.SOLIDTIME_ORGANIZATION ?? config.context.activeOrganization;
+  const org = getActiveOrganizationId(config);
   if (!org) {
     printError("No active organization. Run: solidtime organization use <name>");
     process.exit(1);

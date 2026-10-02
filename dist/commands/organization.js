@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { createClient, loadConfig, saveConfig, requireActiveOrganization, } from "../core/config-store.js";
+import { createClient, getActiveOrganizationId, loadConfig, saveConfig, requireActiveOrganization, } from "../core/config-store.js";
 import { printInfo, printTable, printJson } from "../core/output.js";
 import { exitWithError, ValidationError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
@@ -18,20 +18,19 @@ export function createOrganizationCommand() {
             const client = createClient(config);
             const res = await client.get("users/me/memberships");
             const memberships = res.data;
+            const activeOrg = getActiveOrganizationId(config);
             if (opts.json) {
                 printJson(memberships.map((m) => ({
                     id: m.organization.id,
                     name: m.organization.name,
                     currency: m.organization.currency,
                     role: m.role,
-                    active: m.organization.id === config.context.activeOrganization,
+                    active: m.organization.id === activeOrg,
                 })));
                 return;
             }
             const rows = memberships.map((m) => [
-                m.organization.id === config.context.activeOrganization
-                    ? `* ${m.organization.name}`
-                    : `  ${m.organization.name}`,
+                m.organization.id === activeOrg ? `* ${m.organization.name}` : `  ${m.organization.name}`,
                 m.organization.id,
                 m.role,
                 m.organization.currency,

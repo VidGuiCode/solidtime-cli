@@ -3,7 +3,7 @@ import { createClient, loadConfig, requireActiveOrganization } from "../core/con
 import { printJson, printTable } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
-import { unwrap } from "../core/api-client.js";
+import { fetchAll } from "../core/api-client.js";
 import type { SolidtimeClient } from "../core/types.js";
 
 export function createClientCommand(): Command {
@@ -26,8 +26,7 @@ export function createClientCommand(): Command {
         const path =
           `organizations/${org}/clients` + (params.length > 0 ? `?${params.join("&")}` : "");
 
-        const res = await client.get<unknown>(path);
-        const clients = unwrap<SolidtimeClient>(res);
+        const clients = await fetchAll<SolidtimeClient>(client, path);
 
         if (opts.json) {
           printJson(clients);

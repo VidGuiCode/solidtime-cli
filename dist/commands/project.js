@@ -4,6 +4,7 @@ import { printInfo, printJson, printTable } from "../core/output.js";
 import { exitWithError, ValidationError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
 import { fetchAll } from "../core/api-client.js";
+import { resolveProject } from "../core/resolve.js";
 function formatDuration(seconds) {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
@@ -120,13 +121,14 @@ export function createProjectCommand() {
     cmd
         .command("show")
         .description("Show a single project")
-        .argument("<id>", "Project ID")
+        .argument("<id|name>", "Project ID or name")
         .option("--json", "Output raw JSON")
-        .action(async (id, opts) => {
+        .action(async (idOrName, opts) => {
         try {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
+            const id = await resolveProject(client, org, idOrName);
             const res = await client.get(`organizations/${org}/projects/${id}`);
             const project = res.data;
             if (opts.json) {

@@ -1,0 +1,78 @@
+name: Release
+
+# Publishes a GitHub release with the npm tarball when a version tag is
+# pushed. The tag must match package.json's version. Release notes are taken
+# from the matching CHANGELOG.md section.
+#
+# NOTE: there is deliberately no `npm publish` step. The npm package name
+# "solidtime-cli" is owned by a third party, so this project releases through
+# GitHub release tarballs only (this is also what `solidtime upgrade` installs).
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify tag matches package.json version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag v$TAG_VERSION does not match package.json version $PKG_VERSION."
+            echo "::error::Bump package.json, commit, then move the tag: git tag -f v$TAG_VERSION && git push --force origin v$TAG_VERSION"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test (unit + end-to-end; offline smoke suite skips itself)
+        run: npm test
+
+      - name: Pack tarball
+        run: npm pack
+
+      - name: Extract release notes from CHANGELOG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if ! node scripts/extract-release-notes.mjs "$VERSION" > release-notes.md; then
+            echo "Release notes for v$VERSION not found in CHANGELOG.md — falling back to auto notes." >> release-notes.md
+          fi
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          TARBALL="solidtime-cli-${VERSION}.tgz"
+          if gh release view "$GITHUB_REF_NAME" --json id > /dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists — replacing the tarball asset."
+            gh release upload "$GITHUB_REF_NAME" "$TARBALL" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$TARBALL" \
+              --title "$GITHUB_REF_NAME" \
+              --notes-file release-notes.md \
+              --verify-tag
+          fi

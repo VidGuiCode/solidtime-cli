@@ -3,7 +3,7 @@ import { createClient, loadConfig, requireActiveOrganization } from "../core/con
 import { printJson, printTable } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
-import { unwrap } from "../core/api-client.js";
+import { fetchAll } from "../core/api-client.js";
 export function createProjectMemberCommand() {
     const cmd = new Command("project-member").alias("pm").description("Manage project members");
     cmd
@@ -16,8 +16,7 @@ export function createProjectMemberCommand() {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
-            const res = await client.get(`organizations/${org}/projects/${opts.project}/project-members`);
-            const members = unwrap(res);
+            const members = await fetchAll(client, `organizations/${org}/projects/${opts.project}/project-members`);
             if (opts.json) {
                 printJson(members);
                 return;

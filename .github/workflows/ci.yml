@@ -19,8 +19,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run format:check
-      - run: npm test
       - run: npm run build
       - run: npm run typecheck
+      - run: npm test
       - run: node dist/cli.js --version
       - run: node dist/cli.js --help | grep -q "Commands"

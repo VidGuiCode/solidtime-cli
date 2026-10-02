@@ -142,7 +142,7 @@ solidtime te list --limit 100 --offset 50     # pagination
 
 ## Name or ID Selectors
 
-`--project`, `--task` and `--tags` accept either a UUID or a name on most commands (`te start`, `te create`, `te update`, `te list` filters, `task create`, `task list --project`, `track start`):
+`--project`, `--task` and `--tags` accept either a UUID or a name on most commands (`te start`, `te create`, `te update`, `te list` filters, `task create`, `task list --project`, `track start`), and `project show <name>` resolves names too:
 
 ```bash
 solidtime te create --description "Work" --start 2026-10-01T09:00:00Z --end 2026-10-01T10:00:00Z --project "Client Work" --tags agent
@@ -214,7 +214,7 @@ Tags other than `human`/`agent` land in the `other` column.
 
 ## Overlapping Entries
 
-Solidtime accepts overlapping **finished** entries (two entries whose times overlap, or a finished entry created while a `te start` timer is running) — which is what makes `track` possible. Exception: if the organization has `prevent_overlapping_time_entries` enabled (see `organization update`), the server rejects a second overlapping entry with an error. `track stop` surfaces that error and keeps the local file, so nothing is lost.
+Solidtime accepts overlapping **finished** entries (two entries whose times overlap, or a finished entry created while a `te start` timer is running) — which is what makes `track` possible. Overlap is only rejected when the organization has `prevent_overlapping_time_entries` enabled (see `organization update`): the server then refuses a second overlapping finished entry of the same member with an `overlapping_time_entry` error. A finished entry that overlaps a still-running timer is accepted either way. When the rejection happens, `track stop` surfaces the error and keeps the local file, so nothing is lost.
 
 ## Environment Variables
 

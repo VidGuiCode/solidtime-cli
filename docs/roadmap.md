@@ -1,45 +1,28 @@
 # Roadmap
 
-## v0.1.1 (current)
+Done releases live in [CHANGELOG.md](../CHANGELOG.md), the current command surface
+in [README.md](../README.md). This file only tracks what's next.
 
-- [x] Core commands: login, logout, where, project, time-entry, task, tag, member
-- [x] Multi-account support
-- [x] Organization switching
-- [x] AI discovery commands
-- [x] Shell completion
-- [x] Self-update
+## Shipped
 
-## v0.1.2 (bug fixes + parallel agent tracking)
+| Version | In one line |
+| ------- | ----------- |
+| 0.1.0 | Core surface: login / multi-account, org switching, time-entry CRUD + timer (`te active`), project / task / tag / client / member (incl. invitations and project members), AI `discover`, shell completion, self-update |
+| 0.1.1 | Agent-reported friction fixes: UTC datetime normalization, help-text improvements, `discover all` |
+| 0.1.2 | Parallel agents: `track` timers, `report`, name-or-ID selectors, `--create-missing-tags`, duplicate-entry and corrupt-config fixes, 87 unit tests |
 
-- [x] Fix unencoded URL query parameters (Critical bug)
-- [x] Add pagination support for `list` commands (member/project/tag/task use `fetchAll`; `te list` intentionally keeps its own server-side `--limit`/`--offset`)
-- [x] Fix ineffective jitter in retry logic
-- [x] Make network error detection more robust
-- [x] Handle un-silenced file permission errors safely (`chmod` errors stay silenced for filesystems without POSIX modes; read/write failures now raise a clear message with the config path)
-- [x] Update outdated module imports (`package.json`)
-- [x] Add validation on empty updates
-- [x] Don't blindly retry non-idempotent requests (`POST`/`PATCH`/`DELETE`): a lost response on `te create` currently creates a duplicate entry (retry only when the request provably never connected; otherwise look for an existing entry with the same member/start/description before failing)
-- [x] Fail with a clear error on a corrupt `config.json` instead of returning an empty config that the next `saveConfig()` writes over, wiping every saved account
-- [x] README: install link points to an old release; use a "latest release" link
-- [x] `track` command: local parallel timers so several agents and the owner can log time at once on one account. Running timers live in `~/.solidtime-cli/tracks/<id>.json` (one file each, atomic writes); `stop` posts a finished entry. Subcommands `start`/`stop`/`stop --all [--label]`/`list`/`cancel`/`show`.
-  - [ ] Check first on a real server: overlapping finished entries are accepted, including while a `te start` timer is running; document the result in the README (README documents both outcomes; owner to confirm on the real server before release)
-- [x] `report` command (time reports with date ranges), grouped by project then by `human`/`agent` tag
-- [x] Document the `human`/`agent` tagging convention in the README
-- [x] Name-or-ID resolution for `--project`, `--task`, `--tags` (case-insensitive; ambiguous match is a validation error listing the candidates)
-- [x] `--create-missing-tags` to create unknown tags on first use
-- [x] `te update --no-project` / `--no-task` to clear a project or task
-- [x] `te list --mine` shortcut (fills in the active member ID)
-- [x] `task create --estimate`; `task update --project`
-- [x] Docs: `--json` is per command, not global; `te aggregate` now honours `--json` (table without it)
+## v0.2.0 — safe to run unattended
 
-## v0.2.0 (planned)
+One goal: point an agent at the CLI and leave it alone without supervision.
 
-- [ ] `client` command (list/create/update/delete)
-- [x] `time-entry active` — show currently running timer (shipped as `te active` in 0.1.0)
-- [ ] Tests (unit + smoke) — unit tests landed in 0.1.2 (87 tests); smoke suite still open
+- [x] Smoke suite against a real server — the 0.1.2 bug class (unencoded URLs, retry behaviour, pagination, config handling) is invisible to the mocked unit tests; one end-to-end pass per command family catches it before release. Shipped as an offline end-to-end suite (real binary vs. a mock Solidtime server) plus a real-server smoke suite (`npm run smoke`); the read-only pass ran green against the production server, and it immediately caught real bugs: `report` double-counting multi-tag entries, first-page-only truncation in `client`/`invitation`/`pm`/`discover` listings, and `project show` failing on names
+- [x] Release automation — pushing a `v*.*.*` tag publishes the GitHub release with the npm tarball, notes extracted from CHANGELOG.md, and a tag/package.json version guard (no `npm publish` — the npm name is taken)
+- [x] Close the open `track` question — verified against the Solidtime source (`TimeEntryController::assertNoOverlap`): overlapping finished entries are accepted unless `prevent_overlapping_time_entries` is enabled, and a finished entry overlapping a *running* timer is accepted either way; README wording settled to match. An executable confirmation (against the live server) ships in the smoke suite's write scenarios, gated behind `SOLIDTIME_SMOKE_ALLOW_WRITE=1`
 
-## v0.3.0 (future)
+Ready to cut: rename the CHANGELOG `Unreleased` section to the new version, bump `package.json`, merge to main, push the tag — the release workflow does the rest.
 
-- [ ] `import` / `export` commands
-- [ ] Chart/analytics data access
-- [ ] CI workflow for automated releases
+## v0.3.0 — data in, data out
+
+- [ ] `export` — time entries as CSV/JSON for a date range, for invoicing and backups
+- [ ] `import` — bulk-create entries from CSV/JSON to bring history over from another tracker
+- [ ] Analytics — period-over-period comparison and per-member/per-tag breakdowns on top of `report` / `te aggregate`; use the dashboard/chart endpoints where the API offers them

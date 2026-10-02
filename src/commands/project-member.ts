@@ -3,7 +3,7 @@ import { createClient, loadConfig, requireActiveOrganization } from "../core/con
 import { printJson, printTable } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
-import { unwrap } from "../core/api-client.js";
+import { fetchAll } from "../core/api-client.js";
 import type { SolidtimeProjectMember } from "../core/types.js";
 
 export function createProjectMemberCommand(): Command {
@@ -20,10 +20,10 @@ export function createProjectMemberCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const res = await client.get<unknown>(
+        const members = await fetchAll<SolidtimeProjectMember>(
+          client,
           `organizations/${org}/projects/${opts.project}/project-members`,
         );
-        const members = unwrap<SolidtimeProjectMember>(res);
 
         if (opts.json) {
           printJson(members);

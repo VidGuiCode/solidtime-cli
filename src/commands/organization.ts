@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import {
   createClient,
+  getActiveOrganizationId,
   loadConfig,
   saveConfig,
   requireActiveOrganization,
@@ -27,6 +28,7 @@ export function createOrganizationCommand(): Command {
 
         const res = await client.get<{ data: SolidtimeMembership[] }>("users/me/memberships");
         const memberships = res.data;
+        const activeOrg = getActiveOrganizationId(config);
 
         if (opts.json) {
           printJson(
@@ -35,16 +37,14 @@ export function createOrganizationCommand(): Command {
               name: m.organization.name,
               currency: m.organization.currency,
               role: m.role,
-              active: m.organization.id === config.context.activeOrganization,
+              active: m.organization.id === activeOrg,
             })),
           );
           return;
         }
 
         const rows = memberships.map((m) => [
-          m.organization.id === config.context.activeOrganization
-            ? `* ${m.organization.name}`
-            : `  ${m.organization.name}`,
+          m.organization.id === activeOrg ? `* ${m.organization.name}` : `  ${m.organization.name}`,
           m.organization.id,
           m.role,
           m.organization.currency,

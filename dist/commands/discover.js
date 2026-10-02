@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { createClient, loadConfig, requireActiveOrganization } from "../core/config-store.js";
 import { printJson } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
-import { unwrap } from "../core/api-client.js";
+import { fetchAll } from "../core/api-client.js";
 export function createDiscoverCommand() {
     const cmd = new Command("discover")
         .description("AI-first discovery commands for context and selectors")
@@ -63,8 +63,7 @@ export function createDiscoverCommand() {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
-            const res = await client.get(`organizations/${org}/projects`);
-            const projects = unwrap(res);
+            const projects = await fetchAll(client, `organizations/${org}/projects`);
             printJson(projects.map((p) => ({
                 id: p.id,
                 name: p.name,
@@ -85,8 +84,7 @@ export function createDiscoverCommand() {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
-            const res = await client.get(`organizations/${org}/tasks`);
-            const tasks = unwrap(res);
+            const tasks = await fetchAll(client, `organizations/${org}/tasks`);
             printJson(tasks.map((t) => ({
                 id: t.id,
                 name: t.name,
@@ -106,8 +104,7 @@ export function createDiscoverCommand() {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
-            const res = await client.get(`organizations/${org}/tags`);
-            const tags = unwrap(res);
+            const tags = await fetchAll(client, `organizations/${org}/tags`);
             printJson(tags.map((t) => ({ id: t.id, name: t.name })));
         }
         catch (err) {
@@ -122,8 +119,7 @@ export function createDiscoverCommand() {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
-            const res = await client.get(`organizations/${org}/members`);
-            const members = unwrap(res);
+            const members = await fetchAll(client, `organizations/${org}/members`);
             printJson(members.map((m) => ({
                 id: m.id,
                 user_id: m.user_id,
@@ -144,8 +140,7 @@ export function createDiscoverCommand() {
             const config = loadConfig();
             const client = createClient(config);
             const org = requireActiveOrganization(config);
-            const res = await client.get(`organizations/${org}/clients`);
-            const clients = unwrap(res);
+            const clients = await fetchAll(client, `organizations/${org}/clients`);
             printJson(clients.map((c) => ({
                 id: c.id,
                 name: c.name,
@@ -173,17 +168,11 @@ export function createDiscoverCommand() {
                     .get("users/me/memberships")
                     .then((r) => r.data)
                     .catch(() => []),
-                client
-                    .get(`organizations/${org}/projects`)
-                    .then((r) => unwrap(r)),
-                client.get(`organizations/${org}/tasks`).then((r) => unwrap(r)),
-                client.get(`organizations/${org}/tags`).then((r) => unwrap(r)),
-                client
-                    .get(`organizations/${org}/members`)
-                    .then((r) => unwrap(r)),
-                client
-                    .get(`organizations/${org}/clients`)
-                    .then((r) => unwrap(r)),
+                fetchAll(client, `organizations/${org}/projects`),
+                fetchAll(client, `organizations/${org}/tasks`),
+                fetchAll(client, `organizations/${org}/tags`),
+                fetchAll(client, `organizations/${org}/members`),
+                fetchAll(client, `organizations/${org}/clients`),
             ]);
             const activeOrg = config.context.activeOrganization;
             const orgMatch = memberships.find((m) => m.organization.id === activeOrg);

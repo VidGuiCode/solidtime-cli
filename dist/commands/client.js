@@ -3,7 +3,7 @@ import { createClient, loadConfig, requireActiveOrganization } from "../core/con
 import { printJson, printTable } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
-import { unwrap } from "../core/api-client.js";
+import { fetchAll } from "../core/api-client.js";
 export function createClientCommand() {
     const cmd = new Command("client").description("Manage clients");
     cmd
@@ -20,8 +20,7 @@ export function createClientCommand() {
             if (opts.archived)
                 params.push("filter[archived]=true");
             const path = `organizations/${org}/clients` + (params.length > 0 ? `?${params.join("&")}` : "");
-            const res = await client.get(path);
-            const clients = unwrap(res);
+            const clients = await fetchAll(client, path);
             if (opts.json) {
                 printJson(clients);
                 return;

@@ -7,6 +7,9 @@ export declare function loadConfig(): SolidtimeConfig;
 export declare function saveConfig(config: SolidtimeConfig): void;
 export declare function getActiveAccount(config: SolidtimeConfig): SolidtimeAccount | undefined;
 export declare function requireActiveAccount(config: SolidtimeConfig): SolidtimeAccount;
+/** The effective organization: the SOLIDTIME_ORGANIZATION override wins over
+ * the saved context. Null when neither is set. */
+export declare function getActiveOrganizationId(config: SolidtimeConfig): string | null;
 export declare function requireActiveOrganization(config: SolidtimeConfig): string;
 export declare function requireActiveMemberId(config: SolidtimeConfig): string;
 export declare function resolveAndPersistMemberId(client: SolidtimeApiClient, config: SolidtimeConfig, orgId: string): Promise<string>;

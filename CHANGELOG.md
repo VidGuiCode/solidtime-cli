@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+The v0.2.0 milestone: safe to run unattended.
+
+### Added
+
+- **End-to-end test suite** — every command family is driven through the real CLI binary against a local mock Solidtime server: URL building, pagination, retry and duplicate-protection behaviour, config and track-file handling, exit codes, and the server's overlap policy. This is the layer the 0.1.2 bug class lived in, invisible to mocked unit tests.
+- **Real-server smoke suite** (`npm run smoke`) — the same command families against a live server, enabled with `SOLIDTIME_SMOKE_BASE_URL` / `SOLIDTIME_SMOKE_TOKEN`. Read-only by default; `SOLIDTIME_SMOKE_ALLOW_WRITE=1` adds write round-trips (entries/tags created with a `smoke-` prefix and deleted afterwards) and the `track` overlap verdict scenario.
+- **Tag-triggered release automation** — pushing a `v*.*.*` tag verifies the tag matches `package.json`, runs lint/typecheck/tests, packs the tarball and publishes the GitHub release with notes extracted from the matching CHANGELOG section. There is deliberately no `npm publish`: the `solidtime-cli` name on the npm registry belongs to an unrelated project.
+
+### Fixed
+
+- **`report` double-counted multi-tag entries** — totals were summed from the aggregate endpoint's per-tag sub-rows, so an entry tagged `agent` + `claude` counted twice and project totals exceeded tracked time. The report now classifies each time entry exactly once (`agent` wins over `human`, untagged entries count as `other`), so the columns always add up to the tracked total.
+- **Silent truncation on large organizations** — `client list`, `invitation list`, `pm list` and every `discover` listing fetched only the first page of results.
+- **`project show` accepts names** — `project show <name>` now resolves the name first (like the `te`/`task`/`track` selectors) instead of sending it into the URL path and failing with a 404.
+- **Environment-mode context** — `where` and `organization list` now honour `SOLIDTIME_ORGANIZATION` and show the user when `SOLIDTIME_BASE_URL` / `SOLIDTIME_API_TOKEN` are set. Previously they reported the saved-config context even while every other command ran against the environment override.
+
 ## 0.1.2
 
 Bug fixes and parallel agent tracking.

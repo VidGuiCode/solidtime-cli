@@ -3,8 +3,8 @@ import { createClient, loadConfig, requireActiveOrganization } from "../core/con
 import { printJson, printTable } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
 import { normalizeDateTime } from "../core/datetime.js";
-import { fetchAll } from "../core/api-client.js";
-import type { SolidtimeAggregateRow, SolidtimeProject } from "../core/types.js";
+import { fetchAll, fetchAllOffsetLimit } from "../core/api-client.js";
+import type { SolidtimeProject, SolidtimeTag, SolidtimeTimeEntry } from "../core/types.js";
 
 interface ProjectReport {
   project_id: string | null;
@@ -21,6 +21,15 @@ function formatHours(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.round((seconds % 3600) / 60);
   return `${h}:${String(m).padStart(2, "0")}`;
+}
+
+/** Every entry counts exactly once: an entry tagged both `agent` and `human`
+ * counts as agent time, an untagged entry counts as other. */
+function bucketFor(tagNames: string[]): "human" | "agent" | "other" {
+  const lower = tagNames.map((t) => t.toLowerCase());
+  if (lower.includes("agent")) return "agent";
+  if (lower.includes("human")) return "human";
+  return "other";
 }
 
 export function createReportCommand(): Command {
@@ -40,46 +49,52 @@ export function createReportCommand(): Command {
         const org = requireActiveOrganization(config);
 
         const params = new URLSearchParams();
-        params.append("group", "project");
-        params.append("sub_group", "tag");
         if (opts.start) params.append("start", normalizeDateTime(opts.start));
         if (opts.end) params.append("end", normalizeDateTime(opts.end));
-
-        const res = await client.get<{ data: SolidtimeAggregateRow[] }>(
-          `organizations/${org}/time-entries/aggregate?${params.toString()}`,
+        const query = params.toString();
+        const entries = await fetchAllOffsetLimit<SolidtimeTimeEntry>(
+          client,
+          `organizations/${org}/time-entries` + (query ? `?${query}` : ""),
         );
-        const rows = res.data ?? [];
 
-        const projects = await fetchAll<SolidtimeProject>(client, `organizations/${org}/projects`);
-        const nameById = new Map(projects.map((p) => [p.id, p.name]));
+        const [projects, tags] = await Promise.all([
+          fetchAll<SolidtimeProject>(client, `organizations/${org}/projects`),
+          fetchAll<SolidtimeTag>(client, `organizations/${org}/tags`),
+        ]);
+        const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
+        const tagNameById = new Map(tags.map((t) => [t.id, t.name]));
 
-        const report: ProjectReport[] = rows.map((row) => {
-          const tags: Record<string, number> = {};
-          for (const sub of row.grouped_data ?? []) {
-            const tag = sub.key ?? "(no tag)";
-            tags[tag] = (tags[tag] ?? 0) + sub.seconds;
+        const byProject = new Map<string, ProjectReport>();
+        for (const entry of entries) {
+          const seconds = Math.max(0, entry.duration ?? 0);
+          const key = entry.project_id ?? "(no project)";
+          let row = byProject.get(key);
+          if (!row) {
+            row = {
+              project_id: entry.project_id,
+              project_name: entry.project_id
+                ? (projectNameById.get(entry.project_id) ?? entry.project_id)
+                : "(no project)",
+              human_seconds: 0,
+              agent_seconds: 0,
+              other_seconds: 0,
+              total_seconds: 0,
+              tags: {},
+            };
+            byProject.set(key, row);
           }
-          let human = 0;
-          let agent = 0;
-          let other = 0;
-          let total = 0;
-          for (const [tag, seconds] of Object.entries(tags)) {
-            total += seconds;
-            const normalized = tag.toLowerCase();
-            if (normalized === "human") human += seconds;
-            else if (normalized === "agent") agent += seconds;
-            else other += seconds;
+          row.total_seconds += seconds;
+          const tagNames = entry.tags.map((t) => tagNameById.get(t) ?? t);
+          const bucket = bucketFor(tagNames);
+          if (bucket === "human") row.human_seconds += seconds;
+          else if (bucket === "agent") row.agent_seconds += seconds;
+          else row.other_seconds += seconds;
+          for (const name of tagNames) {
+            row.tags[name] = (row.tags[name] ?? 0) + seconds;
           }
-          return {
-            project_id: row.key,
-            project_name: row.key ? (nameById.get(row.key) ?? row.key) : "(no project)",
-            human_seconds: human,
-            agent_seconds: agent,
-            other_seconds: other,
-            total_seconds: total,
-            tags,
-          };
-        });
+        }
+
+        const report = [...byProject.values()].sort((a, b) => b.total_seconds - a.total_seconds);
 
         if (opts.json) {
           const total = report.reduce((sum, r) => sum + r.total_seconds, 0);

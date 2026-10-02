@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { createClient, loadConfig, requireActiveOrganization } from "../core/config-store.js";
 import { printJson } from "../core/output.js";
 import { exitWithError } from "../core/errors.js";
-import { unwrap } from "../core/api-client.js";
+import { fetchAll } from "../core/api-client.js";
 import type {
   SolidtimeUser,
   SolidtimeMembership,
@@ -79,8 +79,7 @@ export function createDiscoverCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const res = await client.get<unknown>(`organizations/${org}/projects`);
-        const projects = unwrap<SolidtimeProject>(res);
+        const projects = await fetchAll<SolidtimeProject>(client, `organizations/${org}/projects`);
 
         printJson(
           projects.map((p) => ({
@@ -105,8 +104,7 @@ export function createDiscoverCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const res = await client.get<unknown>(`organizations/${org}/tasks`);
-        const tasks = unwrap<SolidtimeTask>(res);
+        const tasks = await fetchAll<SolidtimeTask>(client, `organizations/${org}/tasks`);
 
         printJson(
           tasks.map((t) => ({
@@ -130,8 +128,7 @@ export function createDiscoverCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const res = await client.get<unknown>(`organizations/${org}/tags`);
-        const tags = unwrap<SolidtimeTag>(res);
+        const tags = await fetchAll<SolidtimeTag>(client, `organizations/${org}/tags`);
 
         printJson(tags.map((t) => ({ id: t.id, name: t.name })));
       } catch (err) {
@@ -148,8 +145,7 @@ export function createDiscoverCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const res = await client.get<unknown>(`organizations/${org}/members`);
-        const members = unwrap<SolidtimeMember>(res);
+        const members = await fetchAll<SolidtimeMember>(client, `organizations/${org}/members`);
 
         printJson(
           members.map((m) => ({
@@ -174,8 +170,7 @@ export function createDiscoverCommand(): Command {
         const client = createClient(config);
         const org = requireActiveOrganization(config);
 
-        const res = await client.get<unknown>(`organizations/${org}/clients`);
-        const clients = unwrap<SolidtimeClient>(res);
+        const clients = await fetchAll<SolidtimeClient>(client, `organizations/${org}/clients`);
 
         printJson(
           clients.map((c) => ({
@@ -207,17 +202,11 @@ export function createDiscoverCommand(): Command {
             .get<{ data: SolidtimeMembership[] }>("users/me/memberships")
             .then((r) => r.data)
             .catch(() => []),
-          client
-            .get<unknown>(`organizations/${org}/projects`)
-            .then((r) => unwrap<SolidtimeProject>(r)),
-          client.get<unknown>(`organizations/${org}/tasks`).then((r) => unwrap<SolidtimeTask>(r)),
-          client.get<unknown>(`organizations/${org}/tags`).then((r) => unwrap<SolidtimeTag>(r)),
-          client
-            .get<unknown>(`organizations/${org}/members`)
-            .then((r) => unwrap<SolidtimeMember>(r)),
-          client
-            .get<unknown>(`organizations/${org}/clients`)
-            .then((r) => unwrap<SolidtimeClient>(r)),
+          fetchAll<SolidtimeProject>(client, `organizations/${org}/projects`),
+          fetchAll<SolidtimeTask>(client, `organizations/${org}/tasks`),
+          fetchAll<SolidtimeTag>(client, `organizations/${org}/tags`),
+          fetchAll<SolidtimeMember>(client, `organizations/${org}/members`),
+          fetchAll<SolidtimeClient>(client, `organizations/${org}/clients`),
         ]);
 
         const activeOrg = config.context.activeOrganization;
