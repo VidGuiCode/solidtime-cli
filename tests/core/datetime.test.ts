@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeDateTime, toUTCString } from "../../src/core/datetime.js";
+import { assertEndAfterStart, normalizeDateTime, toUTCString } from "../../src/core/datetime.js";
 import { ValidationError } from "../../src/core/errors.js";
 
 describe("toUTCString", () => {
@@ -36,5 +36,41 @@ describe("normalizeDateTime", () => {
 
   it("throws ValidationError for empty string", () => {
     expect(() => normalizeDateTime("")).toThrow(ValidationError);
+  });
+});
+
+describe("assertEndAfterStart", () => {
+  it("accepts end strictly after start", () => {
+    expect(() => assertEndAfterStart("2026-04-01T10:00:00Z", "2026-04-01T11:00:00Z")).not.toThrow();
+  });
+
+  it("rejects end before start", () => {
+    expect(() => assertEndAfterStart("2026-04-01T10:00:00Z", "2026-04-01T09:00:00Z")).toThrow(
+      ValidationError,
+    );
+  });
+
+  it("rejects equal start and end by default", () => {
+    expect(() => assertEndAfterStart("2026-04-01T10:00:00Z", "2026-04-01T10:00:00Z")).toThrow(
+      ValidationError,
+    );
+  });
+
+  it("rejects equivalent timestamps across different timezone offsets", () => {
+    expect(() => assertEndAfterStart("2026-04-01T12:00:00+02:00", "2026-04-01T10:00:00Z")).toThrow(
+      ValidationError,
+    );
+  });
+
+  it("allows equal start and end when allowEqual is true", () => {
+    expect(() =>
+      assertEndAfterStart("2026-04-01T10:00:00Z", "2026-04-01T10:00:00Z", { allowEqual: true }),
+    ).not.toThrow();
+  });
+
+  it("still rejects end before start when allowEqual is true", () => {
+    expect(() =>
+      assertEndAfterStart("2026-04-01T10:00:00Z", "2026-04-01T09:59:59Z", { allowEqual: true }),
+    ).toThrow(ValidationError);
   });
 });

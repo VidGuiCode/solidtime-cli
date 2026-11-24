@@ -6,17 +6,18 @@ export function printInfo(message) {
 export function printError(message) {
     console.error(`✗  ${message}`);
 }
-export function printErrorJson(error) {
+export function printErrorJson(error, formattedMessage) {
     const errorObj = error instanceof SolidtimeApiRateLimitError
         ? {
             status: "error",
             code: "RATE_LIMITED",
-            message: error.message,
+            message: formattedMessage ?? error.message,
             details: {
                 httpStatus: error.status,
                 retryAfter: error.retryAfter,
                 method: error.method,
                 path: error.path,
+                ...(error.key ? { key: error.key } : {}),
                 ...(typeof error.details === "object" && error.details !== null ? error.details : {}),
             },
         }
@@ -24,11 +25,12 @@ export function printErrorJson(error) {
             ? {
                 status: "error",
                 code: "API_ERROR",
-                message: error.message,
+                message: formattedMessage ?? error.message,
                 details: {
                     httpStatus: error.status,
                     method: error.method,
                     path: error.path,
+                    ...(error.key ? { key: error.key } : {}),
                     ...(typeof error.details === "object" && error.details !== null ? error.details : {}),
                 },
             }
@@ -36,12 +38,12 @@ export function printErrorJson(error) {
                 ? {
                     status: "error",
                     code: error.name,
-                    message: error.message,
+                    message: formattedMessage ?? error.message,
                 }
                 : {
                     status: "error",
                     code: "UNKNOWN_ERROR",
-                    message: String(error),
+                    message: formattedMessage ?? String(error),
                 };
     console.error(JSON.stringify(errorObj, null, 2));
 }

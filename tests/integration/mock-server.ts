@@ -843,6 +843,12 @@ export class MockSolidtimeServer {
       if (typeof body.description === "string") entry.description = body.description;
       if (body.project_id !== undefined) entry.project_id = body.project_id as string | null;
       if (body.task_id !== undefined) entry.task_id = body.task_id as string | null;
+      if (body.project_id !== undefined && body.task_id === undefined && entry.task_id !== null) {
+        const task = (this.tasks.get(org.id) ?? []).find((t) => t.id === entry.task_id);
+        if (!task || task.project_id !== entry.project_id) {
+          entry.task_id = null;
+        }
+      }
       if (body.billable !== undefined) entry.billable = Boolean(body.billable);
       if (Array.isArray(body.tags)) entry.tagIds = body.tags as string[];
       this.json(res, 200, { data: this.entryJson(entry) });

@@ -36,6 +36,7 @@ export function createUpgradeCommand() {
         const latest = await fetchLatestVersion();
         if (!latest) {
             exitWithError(new Error("Could not reach GitHub to check for updates."));
+            return;
         }
         printInfo(`Current version : v${pkg.version}`);
         printInfo(`Latest version  : v${latest}`);
@@ -52,6 +53,7 @@ export function createUpgradeCommand() {
         });
         if (result.status !== 0) {
             exitWithError(new Error(`Upgrade failed. Try running manually: npm install -g ${tarballUrl}`));
+            return;
         }
         console.log("");
         printInfo(`Upgraded to v${latest}.`);

@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Shell completions for subcommands, options, and PowerShell** (`completion powershell`, plus full subcommand, alias, and long-option completion across `bash`, `zsh`, `fish`, and `powershell`).
+- **Upstream API drift check** (`npm run api-drift`, `scripts/api-drift.mjs`, and `docs/api-snapshot.json`) plus a weekly GitHub Actions workflow to catch upstream Solidtime route or request schema changes early.
+- **Solidtime 0.22 live smoke test cases** (write-gated) covering second-timer rejection and `te update --project` task consistency.
+
+### Changed
+
+- **Clear errors for Solidtime 0.22 API rejections** — `time_entry_still_running`, `time_entry_can_not_be_restarted`, `time_entry_member_can_not_be_changed_while_running`, `overlapping_time_entry`, and `feature_is_not_available_in_free_plan` map to clear one-line messages and exit code `3` (`te start` also looks up the active timer ID).
+
+### Fixed
+
+- **Local `end` after `start` validation** — `te create`, `te update` (when both `--start` and `--end` are given), and `track stop --end` reject `end <= start` locally with exit code `3`, including under `--dry-run`.
+- **`te update --no-project`** now also clears `task_id` when `--task` is not supplied and rejects combining `--no-project` with `--task`.
+
 ## 0.2.0
 
 The v0.2.0 milestone: safe to run unattended.

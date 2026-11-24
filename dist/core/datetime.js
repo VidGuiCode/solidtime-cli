@@ -32,4 +32,19 @@ export function parseDurationSeconds(input) {
     const [, , d, , h, , m, , s] = match;
     return Number(d ?? 0) * 86400 + Number(h ?? 0) * 3600 + Number(m ?? 0) * 60 + Number(s ?? 0);
 }
+/**
+ * Validate that end is after start (or >= start when allowEqual is true).
+ */
+export function assertEndAfterStart(start, end, options) {
+    const startMs = new Date(start).getTime();
+    const endMs = new Date(end).getTime();
+    if (isNaN(startMs) || isNaN(endMs)) {
+        throw new ValidationError("Start and end must be valid datetimes.");
+    }
+    const allowEqual = options?.allowEqual ?? false;
+    if (allowEqual ? endMs < startMs : endMs <= startMs) {
+        const comparator = allowEqual ? "after or equal to" : "after";
+        throw new ValidationError(`End time (${end}) must be ${comparator} start time (${start}).`);
+    }
+}
 //# sourceMappingURL=datetime.js.map

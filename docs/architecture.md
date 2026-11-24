@@ -27,6 +27,7 @@ CLI entry (src/cli.ts)
 | `output.ts` | JSON, table, and error output formatting |
 | `errors.ts` | Structured error handling with exit codes |
 | `runtime.ts` | Global flags: `--dry-run`, `--compact`, `--no-interactive` |
+| `completion.ts` | Shell completion tree walking and script generation (`bash`, `zsh`, `fish`, `powershell`) |
 | `prompt.ts` | Interactive input (respects `--no-interactive`) |
 | `help.ts` | Custom Commander.js help formatter |
 

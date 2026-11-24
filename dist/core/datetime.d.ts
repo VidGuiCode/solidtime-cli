@@ -12,4 +12,10 @@ export declare function normalizeDateTime(input: string): string;
  * Accepts plain seconds ("5400") or d/h/m/s components ("90m", "1h30m", "2h").
  */
 export declare function parseDurationSeconds(input: string): number;
+/**
+ * Validate that end is after start (or >= start when allowEqual is true).
+ */
+export declare function assertEndAfterStart(start: string, end: string, options?: {
+    allowEqual?: boolean;
+}): void;
 //# sourceMappingURL=datetime.d.ts.map

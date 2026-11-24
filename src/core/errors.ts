@@ -15,12 +15,47 @@ export class NonInteractiveError extends Error {
   }
 }
 
+const API_ERROR_KEY_MESSAGES: Record<string, string> = {
+  time_entry_still_running:
+    "A timer is already running, stop it with `te stop` (check `te active` for its ID).",
+  time_entry_can_not_be_restarted:
+    "A finished time entry cannot be restarted. Start a new timer with `te start`.",
+  time_entry_member_can_not_be_changed_while_running:
+    "Cannot change the member of a running time entry. Stop it first with `te stop`.",
+  overlapping_time_entry:
+    "Time entry overlaps an existing entry (prevent_overlapping_time_entries is enabled for this organization).",
+  feature_is_not_available_in_free_plan:
+    "This feature is not available on the current Solidtime plan.",
+};
+
+export function isKnownApiErrorKey(key: string | undefined): boolean {
+  return key !== undefined && Object.prototype.hasOwnProperty.call(API_ERROR_KEY_MESSAGES, key);
+}
+
 export function getExitCode(error: unknown): number {
   if (error instanceof SolidtimeApiRateLimitError) return 4;
   if (error instanceof SolidtimeApiError && (error.status === 401 || error.status === 403))
     return 2;
+  if (error instanceof SolidtimeApiError && isKnownApiErrorKey(error.key)) return 3;
   if (error instanceof ValidationError || error instanceof NonInteractiveError) return 3;
   return 1;
+}
+
+function getMappedApiErrorMessage(error: SolidtimeApiError): string | null {
+  if (!error.key || !isKnownApiErrorKey(error.key)) return null;
+  if (
+    error.key === "time_entry_still_running" &&
+    error.details &&
+    typeof error.details === "object" &&
+    "active_time_entry_id" in error.details &&
+    typeof (error.details as { active_time_entry_id?: unknown }).active_time_entry_id ===
+      "string" &&
+    (error.details as { active_time_entry_id: string }).active_time_entry_id.length > 0
+  ) {
+    const activeId = (error.details as { active_time_entry_id: string }).active_time_entry_id;
+    return `A timer is already running (${activeId}), stop it with \`te stop\``;
+  }
+  return API_ERROR_KEY_MESSAGES[error.key];
 }
 
 function getStatusHint(status: number, path?: string): string | null {
@@ -45,6 +80,8 @@ function getStatusHint(status: number, path?: string): string | null {
 
 export function getErrorMessage(error: unknown): string {
   if (error instanceof SolidtimeApiError) {
+    const mapped = getMappedApiErrorMessage(error);
+    if (mapped) return mapped;
     const hint = getStatusHint(error.status, error.path);
     return hint ? `${error.message}\n  Hint: ${hint}` : error.message;
   }
@@ -52,11 +89,11 @@ export function getErrorMessage(error: unknown): string {
   return String(error);
 }
 
-export function exitWithError(error: unknown, json = false): never {
+export function exitWithError(error: unknown, json = false): void {
   if (json) {
-    printErrorJson(error);
+    printErrorJson(error, getErrorMessage(error));
   } else {
     printError(getErrorMessage(error));
   }
-  process.exit(getExitCode(error));
+  process.exitCode = getExitCode(error);
 }

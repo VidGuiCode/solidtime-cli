@@ -89,9 +89,11 @@ beforeEach(() => {
   delete process.env.SOLIDTIME_TRACK_STALE_HOURS;
 
   (os as { homedir(): string }).homedir = () => homeDir;
+  process.exitCode = undefined;
 });
 
 afterEach(() => {
+  process.exitCode = undefined;
   (os as { homedir(): string }).homedir = os.homedir;
   for (const [key, value] of Object.entries(envBackup)) {
     if (value === undefined) delete process.env[key];
@@ -117,10 +119,6 @@ function captureConsole(): { logs: string[]; errors: string[] } {
 
 function lastJson(logs: string[]): unknown {
   return JSON.parse(logs[logs.length - 1]);
-}
-
-function stubExit(): ReturnType<typeof vi.spyOn> {
-  return vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
 }
 
 describe("track start and list", () => {
@@ -167,7 +165,6 @@ describe("track stop", () => {
       init?.method === "POST" ? jsonResponse(500, { message: "boom" }) : jsonResponse(400),
     );
     vi.stubGlobal("fetch", fetchMock);
-    const exit = stubExit();
     captureConsole();
 
     const record = makeRecord();
@@ -175,7 +172,7 @@ describe("track stop", () => {
     await runTrack(["stop", record.id, "--json"]);
 
     expect(readTrack(record.id)).toEqual(record);
-    expect(exit).toHaveBeenCalledWith(1);
+    expect(process.exitCode).toBe(1);
   });
 
   it("succeeds on a second attempt and deletes the file", async () => {
@@ -188,19 +185,20 @@ describe("track stop", () => {
         : entryResponse(makeEntry("entry-1"));
     });
     vi.stubGlobal("fetch", fetchMock);
-    const exit = stubExit();
     const { logs } = captureConsole();
 
     const record = makeRecord();
     writeTrack(record);
     await runTrack(["stop", record.id, "--json"]);
     expect(readTrack(record.id)).not.toBeNull();
+    expect(process.exitCode).toBe(1);
 
+    process.exitCode = undefined;
     await runTrack(["stop", record.id, "--json"]);
 
     expect(readTrack(record.id)).toBeNull();
     expect(lastJson(logs)).toMatchObject({ id: "entry-1" });
-    expect(exit).toHaveBeenCalledTimes(1);
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("recovers via dedupe lookup after a lost response and creates exactly one entry", async () => {
@@ -254,21 +252,22 @@ describe("track stop", () => {
 
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    const exit = stubExit();
     captureConsole();
 
     await runTrack(["stop", staleRecord.id, "--json"]);
 
-    expect(exit).toHaveBeenCalledWith(3);
+    expect(process.exitCode).toBe(3);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(readTrack(staleRecord.id)).toEqual(staleRecord);
 
     // --force bypasses the stale guard.
+    process.exitCode = undefined;
     fetchMock.mockImplementation(async (_url: unknown, init?: RequestInit) =>
       init?.method === "POST" ? entryResponse(makeEntry("entry-2")) : jsonResponse(400),
     );
     await runTrack(["stop", staleRecord.id, "--force", "--json"]);
     expect(readTrack(staleRecord.id)).toBeNull();
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("--all --label x only stops tracks with that label and reports failures", async () => {
@@ -285,7 +284,6 @@ describe("track stop", () => {
       return postCount === 1 ? entryResponse(makeEntry(`e${postCount}`)) : jsonResponse(500);
     });
     vi.stubGlobal("fetch", fetchMock);
-    const exit = stubExit();
     const { logs } = captureConsole();
 
     await runTrack(["stop", "--all", "--label", "x", "--json"]);
@@ -297,7 +295,7 @@ describe("track stop", () => {
     // Tracks are processed oldest first: aaaa2222 stops, cccc4444 fails.
     expect(printed.stopped.map((s) => s.id)).toEqual(["aaaa2222"]);
     expect(printed.failed.map((f) => f.id)).toEqual(["cccc4444"]);
-    expect(exit).toHaveBeenCalledWith(1);
+    expect(process.exitCode).toBe(1);
     // The differently-labelled track is untouched.
     expect(readTrack("bbbb3333")).not.toBeNull();
     expect(readTrack("aaaa2222")).toBeNull();
@@ -308,14 +306,38 @@ describe("track stop", () => {
     writeTrack(record);
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    const exit = stubExit();
     captureConsole();
 
     await runTrack(["stop", record.id, "--end", "2026-10-01T08:00:00Z", "--json"]);
 
-    expect(exit).toHaveBeenCalledWith(3);
+    expect(process.exitCode).toBe(3);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(readTrack(record.id)).toEqual(record);
+  });
+
+  it("rejects an explicit --end equal to the track start (including under --dry-run)", async () => {
+    const record = makeRecord({ start: "2026-10-01T09:00:00Z" });
+    writeTrack(record);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    captureConsole();
+
+    await runTrack(["stop", record.id, "--end", "2026-10-01T09:00:00Z", "--json"]);
+    expect(process.exitCode).toBe(3);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(readTrack(record.id)).toEqual(record);
+
+    process.exitCode = undefined;
+    const argv = process.argv;
+    process.argv = [...argv, "--dry-run"];
+    try {
+      await runTrack(["stop", record.id, "--end", "2026-10-01T09:00:00Z", "--json"]);
+      expect(process.exitCode).toBe(3);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(readTrack(record.id)).toEqual(record);
+    } finally {
+      process.argv = argv;
+    }
   });
 });
 

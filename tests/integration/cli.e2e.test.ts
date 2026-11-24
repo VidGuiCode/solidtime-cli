@@ -11,6 +11,7 @@ import {
   MockSolidtimeServer,
   ORG_ACME,
   ORG_STRICT,
+  PROJ_A,
   PROJ_B,
   TASK_1,
 } from "./mock-server.js";
@@ -387,6 +388,79 @@ describe("time-entry family (write)", () => {
   );
 
   it(
+    "te update --project moves entry with task and keeps project/task consistent",
+    async () => {
+      const created = await runJson<{ id: string; project_id: string; task_id: string }>([
+        "te",
+        "create",
+        "--description",
+        "move project",
+        "--start",
+        "2026-10-01T15:00:00Z",
+        "--end",
+        "2026-10-01T15:30:00Z",
+        "--project",
+        PROJ_B,
+        "--task",
+        TASK_1,
+        "--json",
+      ]);
+      expect(created.project_id).toBe(PROJ_B);
+      expect(created.task_id).toBe(TASK_1);
+
+      const moved = await runJson<{ project_id: string | null; task_id: string | null }>([
+        "te",
+        "update",
+        created.id,
+        "--project",
+        PROJ_A,
+        "--json",
+      ]);
+      expect(moved.project_id).toBe(PROJ_A);
+      expect(moved.task_id).toBeNull();
+
+      // Re-attach a task, then verify --no-project clears both project and task
+      const reattached = await runJson<{ project_id: string | null; task_id: string | null }>([
+        "te",
+        "update",
+        created.id,
+        "--project",
+        PROJ_B,
+        "--task",
+        TASK_1,
+        "--json",
+      ]);
+      expect(reattached.task_id).toBe(TASK_1);
+
+      const cleared = await runJson<{ project_id: string | null; task_id: string | null }>([
+        "te",
+        "update",
+        created.id,
+        "--no-project",
+        "--json",
+      ]);
+      expect(cleared.project_id).toBeNull();
+      expect(cleared.task_id).toBeNull();
+
+      const putsBefore = (await state()).requests.filter((r) => r.method === "PUT").length;
+      const conflicting = await run([
+        "te",
+        "update",
+        created.id,
+        "--no-project",
+        "--task",
+        "Design",
+        "--json",
+      ]);
+      expect(conflicting.status).toBe(3);
+      expect(conflicting.stderr).toContain("--no-project");
+      const putsAfter = (await state()).requests.filter((r) => r.method === "PUT").length;
+      expect(putsAfter).toBe(putsBefore);
+    },
+    T,
+  );
+
+  it(
     "te delete removes the entry",
     async () => {
       const created = await runJson<{ id: string }>([
@@ -498,8 +572,16 @@ describe("time-entry family (write)", () => {
       ]);
       expect(started.id).toBeTruthy();
       const second = await run(["te", "start", "--description", "second", "--json"]);
-      expect(second.status).toBe(1);
+      expect(second.status).toBe(3);
       expect(second.stderr).toContain("time_entry_still_running");
+      expect(second.stderr).toContain(started.id);
+      expect(second.stderr).toContain("te stop");
+
+      const human = await run(["te", "start", "--description", "second"]);
+      expect(human.status).toBe(3);
+      expect(human.stderr).toContain(
+        `A timer is already running (${started.id}), stop it with \`te stop\``,
+      );
     },
     T,
   );
@@ -525,6 +607,58 @@ describe("time-entry family (write)", () => {
       expect(
         s.requests.filter((r) => r.method === "POST" && r.url.endsWith("/time-entries")),
       ).toHaveLength(0);
+    },
+    T,
+  );
+
+  it(
+    "rejects end <= start locally on te create and te update (including under --dry-run)",
+    async () => {
+      for (const extra of [[], ["--dry-run"]]) {
+        const reversed = await run([
+          "te",
+          "create",
+          "--description",
+          "backwards",
+          "--start",
+          "2026-10-01T15:00:00Z",
+          "--end",
+          "2026-10-01T14:00:00Z",
+          ...extra,
+          "--json",
+        ]);
+        expect(reversed.status).toBe(3);
+
+        const zeroLen = await run([
+          "te",
+          "create",
+          "--description",
+          "zero",
+          "--start",
+          "2026-10-01T15:00:00Z",
+          "--end",
+          "2026-10-01T15:00:00Z",
+          ...extra,
+          "--json",
+        ]);
+        expect(zeroLen.status).toBe(3);
+
+        const badUpdate = await run([
+          "te",
+          "update",
+          "10000000-0000-4000-8000-000000000201",
+          "--start",
+          "2026-10-01T15:00:00Z",
+          "--end",
+          "2026-10-01T15:00:00Z",
+          ...extra,
+          "--json",
+        ]);
+        expect(badUpdate.status).toBe(3);
+      }
+
+      const s = await state();
+      expect(s.requests.filter((r) => ["POST", "PUT"].includes(r.method))).toHaveLength(0);
     },
     T,
   );
@@ -590,8 +724,26 @@ describe("overlap policy (mirrors Solidtime server behaviour)", () => {
         strictEnv,
       );
       expect(first.status, first.stderr).toBe(0);
-      expect(second.status).toBe(1);
-      expect(second.stderr).toContain("overlapping_time_entry");
+      expect(second.status).toBe(3);
+      expect(second.stderr).toContain("overlaps an existing entry");
+
+      const secondJson = await run(
+        [
+          "te",
+          "create",
+          "--description",
+          "b-json",
+          "--start",
+          "2026-10-01T09:30:00Z",
+          "--end",
+          "2026-10-01T10:30:00Z",
+          "--json",
+        ],
+        strictEnv,
+      );
+      expect(secondJson.status).toBe(3);
+      expect(secondJson.stderr).toContain("overlapping_time_entry");
+      expect(secondJson.stderr).toContain("overlaps an existing entry");
     },
     T,
   );
@@ -727,7 +879,7 @@ describe("track family", () => {
   );
 
   it(
-    "a rejected POST (400) keeps the local file and exits 1, and a re-run succeeds",
+    "a rejected POST (400 overlapping_time_entry) keeps the local file and exits 3, and a re-run succeeds",
     async () => {
       const started = await runJson<{ id: string }>([
         "track",
@@ -739,7 +891,7 @@ describe("track family", () => {
       await server.setFaults({ postTimeEntries400: 1 });
 
       const failed = await run(["track", "stop", started.id, "--json"]);
-      expect(failed.status).toBe(1);
+      expect(failed.status).toBe(3);
       expect(fs.existsSync(path.join(tracksDir, `${started.id}.json`))).toBe(true);
 
       const retried = await run(["track", "stop", started.id, "--json"]);
@@ -810,6 +962,49 @@ describe("track family", () => {
       expect(result.status).toBe(0);
       expect(JSON.parse(result.stdout)).toMatchObject({ dryRun: true, action: "track.stop" });
       expect(fs.existsSync(path.join(tracksDir, `${started.id}.json`))).toBe(true);
+    },
+    T,
+  );
+
+  it(
+    "track stop rejects --end <= track start (including under --dry-run) and keeps the file",
+    async () => {
+      const started = await runJson<{ id: string; start: string }>([
+        "track",
+        "start",
+        "--description",
+        "bad end",
+        "--json",
+      ]);
+
+      for (const extra of [[], ["--dry-run"]]) {
+        const equal = await run([
+          "track",
+          "stop",
+          started.id,
+          "--end",
+          started.start,
+          ...extra,
+          "--json",
+        ]);
+        expect(equal.status).toBe(3);
+        expect(fs.existsSync(path.join(tracksDir, `${started.id}.json`))).toBe(true);
+
+        const earlier = await run([
+          "track",
+          "stop",
+          started.id,
+          "--end",
+          "2020-01-01T00:00:00Z",
+          ...extra,
+          "--json",
+        ]);
+        expect(earlier.status).toBe(3);
+        expect(fs.existsSync(path.join(tracksDir, `${started.id}.json`))).toBe(true);
+      }
+
+      const s = await state();
+      expect(s.requests.filter((r) => r.method === "POST")).toHaveLength(0);
     },
     T,
   );
@@ -949,6 +1144,25 @@ describe("login and config-driven operation", () => {
       // config-driven client: no SOLIDTIME_BASE_URL/TOKEN in the environment
       const entries = await runJson<unknown[]>(["te", "list", "--limit", "1", "--json"], loginEnv);
       expect(entries).toHaveLength(1);
+    },
+    T,
+  );
+});
+
+describe("shell completion", () => {
+  it(
+    "generates completions for bash, zsh, fish and powershell with subcommands",
+    async () => {
+      for (const shell of ["bash", "zsh", "fish", "powershell"]) {
+        const res = await run(["completion", shell], noEnv);
+        expect(res.status, `${shell} failed: ${res.stderr}`).toBe(0);
+        expect(res.stdout).toContain("time-entry");
+        expect(res.stdout).toContain("te");
+        expect(res.stdout).toContain("bulk-update");
+      }
+
+      const invalid = await run(["completion", "invalid-shell"], noEnv);
+      expect(invalid.status).toBe(3);
     },
     T,
   );

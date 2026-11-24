@@ -9,7 +9,7 @@ import {
 import { printInfo, printJson, printTable } from "../core/output.js";
 import { exitWithError, ValidationError, getErrorMessage } from "../core/errors.js";
 import { isDryRunEnabled, isNonInteractiveMode } from "../core/runtime.js";
-import { normalizeDateTime, toUTCString } from "../core/datetime.js";
+import { assertEndAfterStart, normalizeDateTime, toUTCString } from "../core/datetime.js";
 import { resolveProject, resolveTask, resolveTagIds } from "../core/resolve.js";
 import { createTimeEntryWithDedupe } from "../core/time-entries.js";
 import { confirm } from "../core/prompt.js";
@@ -79,11 +79,7 @@ async function stopTrack(
   }
 
   const end = opts.end ? normalizeDateTime(opts.end) : toUTCString(new Date());
-  if (end < track.start) {
-    throw new ValidationError(
-      `End time (${end}) is before the track start (${track.start}). Use --end with a later time.`,
-    );
-  }
+  assertEndAfterStart(track.start, end, { allowEqual: !opts.end });
 
   const body = {
     member_id: track.member_id,
@@ -227,7 +223,7 @@ export function createTrackCommand(): Command {
             );
           }
 
-          if (failed.length > 0) process.exit(1);
+          if (failed.length > 0) process.exitCode = 1;
           return;
         }
 

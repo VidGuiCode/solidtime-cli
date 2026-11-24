@@ -3,7 +3,7 @@ import { createClient, loadConfig, requireActiveOrganization, requireActiveMembe
 import { printJson, printTable } from "../core/output.js";
 import { exitWithError, ValidationError } from "../core/errors.js";
 import { isDryRunEnabled } from "../core/runtime.js";
-import { normalizeDateTime, toUTCString } from "../core/datetime.js";
+import { assertEndAfterStart, normalizeDateTime, toUTCString } from "../core/datetime.js";
 import { unwrap, SolidtimeApiError } from "../core/api-client.js";
 import { createTimeEntryWithDedupe } from "../core/time-entries.js";
 import { resolveProject, resolveProjectIds, resolveTask, resolveTaskIds, resolveTagIds, } from "../core/resolve.js";
@@ -133,7 +133,37 @@ export function createTimeEntryCommand() {
                 printJson({ dryRun: true, action: "time-entry.start", body });
                 return;
             }
-            const res = await client.post(`organizations/${org}/time-entries`, body);
+            let res;
+            try {
+                res = await client.post(`organizations/${org}/time-entries`, body);
+            }
+            catch (postErr) {
+                if (postErr instanceof SolidtimeApiError && postErr.key === "time_entry_still_running") {
+                    let activeId;
+                    try {
+                        const active = await client.get("users/me/time-entries/active");
+                        activeId = active.data?.id;
+                    }
+                    catch {
+                        // Best-effort lookup; fall back to the generic message if unavailable.
+                    }
+                    if (activeId) {
+                        const rawMessage = postErr.details &&
+                            typeof postErr.details === "object" &&
+                            "response" in postErr.details &&
+                            typeof postErr.details.response === "string"
+                            ? postErr.details.response
+                            : postErr.message;
+                        throw new SolidtimeApiError(postErr.status, rawMessage, postErr.method, postErr.path, {
+                            ...(typeof postErr.details === "object" && postErr.details !== null
+                                ? postErr.details
+                                : {}),
+                            active_time_entry_id: activeId,
+                        }, postErr.key);
+                    }
+                }
+                throw postErr;
+            }
             if (opts.json) {
                 printJson(res.data);
                 return;
@@ -192,6 +222,9 @@ export function createTimeEntryCommand() {
             const client = createClient(config);
             const org = requireActiveOrganization(config);
             const memberId = requireActiveMemberId(config);
+            const start = normalizeDateTime(opts.start);
+            const end = normalizeDateTime(opts.end);
+            assertEndAfterStart(start, end);
             const projectId = opts.project ? await resolveProject(client, org, opts.project) : null;
             const taskId = opts.task ? await resolveTask(client, org, opts.task, projectId) : null;
             const tagIds = opts.tags
@@ -202,8 +235,8 @@ export function createTimeEntryCommand() {
             const body = {
                 member_id: memberId,
                 description: opts.description,
-                start: normalizeDateTime(opts.start),
-                end: normalizeDateTime(opts.end),
+                start,
+                end,
                 project_id: projectId,
                 task_id: taskId,
                 tags: tagIds,
@@ -249,8 +282,17 @@ export function createTimeEntryCommand() {
             const client = createClient(config);
             const org = requireActiveOrganization(config);
             const memberId = requireActiveMemberId(config);
-            // Commander turns `--project` and `--no-project` into boolean `false`
-            // when neither is given, so only a string value means "set it".
+            const start = opts.start ? normalizeDateTime(opts.start) : undefined;
+            const end = opts.end ? normalizeDateTime(opts.end) : undefined;
+            if (start && end) {
+                assertEndAfterStart(start, end);
+            }
+            if (opts.project === false && typeof opts.task === "string") {
+                throw new ValidationError("Cannot combine --no-project with --task.");
+            }
+            // With both `--project <id|name>` and `--no-project`, Commander leaves
+            // `opts.project` undefined when neither is passed, `false` for
+            // `--no-project`, and a string for `--project <value>` (same for `--task`).
             const projectId = typeof opts.project === "string" ? await resolveProject(client, org, opts.project) : null;
             const taskId = typeof opts.task === "string"
                 ? await resolveTask(client, org, opts.task, projectId)
@@ -263,20 +305,24 @@ export function createTimeEntryCommand() {
             const body = { member_id: memberId };
             if (opts.description)
                 body.description = opts.description;
-            if (opts.project === false)
+            if (opts.project === false) {
                 body.project_id = null;
-            else if (projectId)
+                if (opts.task === undefined)
+                    body.task_id = null;
+            }
+            else if (projectId) {
                 body.project_id = projectId;
+            }
             if (opts.task === false)
                 body.task_id = null;
             else if (taskId)
                 body.task_id = taskId;
             if (tagIds)
                 body.tags = tagIds;
-            if (opts.start)
-                body.start = normalizeDateTime(opts.start);
-            if (opts.end)
-                body.end = normalizeDateTime(opts.end);
+            if (start)
+                body.start = start;
+            if (end)
+                body.end = end;
             if (opts.billable !== undefined)
                 body.billable = opts.billable;
             if (Object.keys(body).length === 1 && "member_id" in body) {

@@ -1,21 +1,39 @@
+export function parseApiErrorKey(errorText) {
+    try {
+        const parsed = JSON.parse(errorText);
+        if (parsed &&
+            typeof parsed === "object" &&
+            "key" in parsed &&
+            typeof parsed.key === "string") {
+            const key = parsed.key;
+            return key.length > 0 ? key : undefined;
+        }
+    }
+    catch {
+        // Ignore non-JSON error responses
+    }
+    return undefined;
+}
 export class SolidtimeApiError extends Error {
     status;
     method;
     path;
     details;
-    constructor(status, message, method, path, details) {
+    key;
+    constructor(status, message, method, path, details, key) {
         super(`API error ${status}: ${message}`);
         this.status = status;
         this.method = method;
         this.path = path;
         this.details = details;
+        this.key = key;
         this.name = "SolidtimeApiError";
     }
 }
 export class SolidtimeApiRateLimitError extends SolidtimeApiError {
     retryAfter;
-    constructor(status, message, retryAfter, method, path, details) {
-        super(status, message, method, path, details);
+    constructor(status, message, retryAfter, method, path, details, key) {
+        super(status, message, method, path, details, key);
         this.retryAfter = retryAfter;
         this.name = "SolidtimeApiRateLimitError";
     }
@@ -102,6 +120,10 @@ export class SolidtimeApiClient {
             return true;
         return false;
     }
+    createApiError(status, errorText, method, path, extraDetails) {
+        const key = parseApiErrorKey(errorText);
+        return new SolidtimeApiError(status, errorText, method, path, { ...extraDetails, response: errorText }, key);
+    }
     async fetchWithRetry(path, options = {}) {
         const url = this.url(path);
         const fetchOptions = {
@@ -123,9 +145,7 @@ export class SolidtimeApiClient {
                     const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : null;
                     if (attempt === this.maxRetries) {
                         const errorText = await res.text();
-                        throw new SolidtimeApiRateLimitError(res.status, errorText, retryAfter, method, path, {
-                            response: errorText,
-                        });
+                        throw new SolidtimeApiRateLimitError(res.status, errorText, retryAfter, method, path, { response: errorText }, parseApiErrorKey(errorText));
                     }
                     await this.sleep(this.calculateDelay(attempt, retryAfter));
                     continue;
@@ -135,18 +155,14 @@ export class SolidtimeApiClient {
                 // the caller check for an existing entry instead.
                 if (noBlindRetry && res.status >= 500 && res.status < 600) {
                     const errorText = await res.text();
-                    throw new SolidtimeApiError(res.status, errorText, method, path, {
-                        response: errorText,
-                    });
+                    throw this.createApiError(res.status, errorText, method, path);
                 }
                 if (this.isRetryableError(res.status) && attempt < this.maxRetries) {
                     await this.sleep(this.calculateDelay(attempt, null));
                     continue;
                 }
                 const errorText = await res.text();
-                throw new SolidtimeApiError(res.status, errorText, method, path, {
-                    response: errorText,
-                });
+                throw this.createApiError(res.status, errorText, method, path);
             }
             catch (error) {
                 if (error instanceof SolidtimeApiError)
@@ -172,7 +188,7 @@ export class SolidtimeApiClient {
         const res = await this.fetchWithRetry(path);
         if (!res.ok) {
             const errorText = await res.text();
-            throw new SolidtimeApiError(res.status, errorText, "GET", path, { response: errorText });
+            throw this.createApiError(res.status, errorText, "GET", path);
         }
         return res.json();
     }
@@ -183,10 +199,7 @@ export class SolidtimeApiClient {
         });
         if (!res.ok) {
             const errorText = await res.text();
-            throw new SolidtimeApiError(res.status, errorText, "POST", path, {
-                request: body,
-                response: errorText,
-            });
+            throw this.createApiError(res.status, errorText, "POST", path, { request: body });
         }
         return res.json();
     }
@@ -197,10 +210,7 @@ export class SolidtimeApiClient {
         });
         if (!res.ok) {
             const errorText = await res.text();
-            throw new SolidtimeApiError(res.status, errorText, "PUT", path, {
-                request: body,
-                response: errorText,
-            });
+            throw this.createApiError(res.status, errorText, "PUT", path, { request: body });
         }
         return res.json();
     }
@@ -211,10 +221,7 @@ export class SolidtimeApiClient {
         });
         if (!res.ok) {
             const errorText = await res.text();
-            throw new SolidtimeApiError(res.status, errorText, "PATCH", path, {
-                request: body,
-                response: errorText,
-            });
+            throw this.createApiError(res.status, errorText, "PATCH", path, { request: body });
         }
         return res.json();
     }
@@ -224,7 +231,7 @@ export class SolidtimeApiClient {
         });
         if (!res.ok) {
             const errorText = await res.text();
-            throw new SolidtimeApiError(res.status, errorText, "DELETE", path, { response: errorText });
+            throw this.createApiError(res.status, errorText, "DELETE", path);
         }
     }
     async deleteWithBody(path, body) {
@@ -234,10 +241,7 @@ export class SolidtimeApiClient {
         });
         if (!res.ok) {
             const errorText = await res.text();
-            throw new SolidtimeApiError(res.status, errorText, "DELETE", path, {
-                request: body,
-                response: errorText,
-            });
+            throw this.createApiError(res.status, errorText, "DELETE", path, { request: body });
         }
         return res.json();
     }

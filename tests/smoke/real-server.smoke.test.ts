@@ -265,6 +265,66 @@ describe.skipIf(!SMOKE_ENABLED || !ALLOW_WRITE)("smoke: write round-trips", () =
     startedTrackId = null;
     expect(stopped.description).toBe(`${prefix}track`);
   });
+
+  it("second te start while a timer runs fails with exit 3 and names the running timer", () => {
+    const running = json<{ id: string }>(
+      run(["te", "start", "--description", `${prefix}first-timer`, "--json"]),
+    );
+    try {
+      const second = run(["te", "start", "--description", `${prefix}second-timer`]);
+      expect(second.status).toBe(3);
+      expect(second.stderr).toContain(running.id);
+      expect(second.stderr).toContain("te stop");
+    } finally {
+      const stopped = json<{ id: string }>(run(["te", "stop", running.id, "--json"]));
+      createdEntryIds.push(stopped.id);
+    }
+  });
+
+  it("te update --project on an entry with a task keeps project and task consistent", () => {
+    const projects = json<{ id: string; name: string }[]>(run(["project", "list", "--json"]));
+    const tasks = json<{ id: string; name: string; project_id?: string | null }[]>(
+      run(["task", "list", "--json"]),
+    );
+    const task = tasks.find((t) => Boolean(t.project_id));
+    const otherProject = projects.find((p) => p.id !== task?.project_id);
+    if (!task?.project_id || !otherProject) {
+      console.log(
+        "smoke note: skipping te update --project consistency test (needs >= 2 projects and 1 project task)",
+      );
+      return;
+    }
+
+    const start = new Date(Date.now() - 1800 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
+    const end = new Date(Date.now() - 900 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
+    const entry = json<{ id: string; project_id: string | null; task_id: string | null }>(
+      run([
+        "te",
+        "create",
+        "--description",
+        `${prefix}proj-move`,
+        "--start",
+        start,
+        "--end",
+        end,
+        "--project",
+        task.project_id,
+        "--task",
+        task.id,
+        "--json",
+      ]),
+    );
+    createdEntryIds.push(entry.id);
+
+    const updated = json<{ project_id: string | null; task_id: string | null }>(
+      run(["te", "update", entry.id, "--project", otherProject.id, "--json"]),
+    );
+    console.log(
+      `smoke te update --project result: project_id=${updated.project_id}, task_id=${updated.task_id}`,
+    );
+    expect(updated.project_id).toBe(otherProject.id);
+    expect(updated.task_id).toBeNull();
+  });
 });
 
 describe.skipIf(!SMOKE_ENABLED || !ALLOW_WRITE)("smoke: track overlap verdict", () => {

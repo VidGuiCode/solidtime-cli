@@ -137,6 +137,44 @@ describe("fetchWithRetry", () => {
     expect(res.data.id).toBe("1");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("extracts key from JSON error bodies onto SolidtimeApiError", async () => {
+    const body = JSON.stringify({
+      error: true,
+      key: "time_entry_still_running",
+      message: "Time entry still running",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => errorResponse(400, body)),
+    );
+    const client = new SolidtimeApiClient({ baseUrl: "https://x", token: "t", retryDelay: 1 });
+
+    await expect(client.post("/things", { a: 1 })).rejects.toMatchObject({
+      status: 400,
+      key: "time_entry_still_running",
+    });
+  });
+
+  it("leaves key undefined when error body is not JSON or has no key", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(errorResponse(400, "plain text error"))
+        .mockResolvedValueOnce(errorResponse(422, JSON.stringify({ message: "Invalid field" }))),
+    );
+    const client = new SolidtimeApiClient({ baseUrl: "https://x", token: "t", retryDelay: 1 });
+
+    await expect(client.get("/one")).rejects.toMatchObject({
+      status: 400,
+      key: undefined,
+    });
+    await expect(client.get("/two")).rejects.toMatchObject({
+      status: 422,
+      key: undefined,
+    });
+  });
 });
 
 describe("unwrap", () => {

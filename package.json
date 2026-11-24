@@ -27,7 +27,9 @@
     "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "verify-pack": "bash scripts/verify-pack.sh"
+    "verify-pack": "bash scripts/verify-pack.sh",
+    "api-drift": "node scripts/api-drift.mjs",
+    "api-drift:update": "node scripts/api-drift.mjs --update"
   },
   "keywords": [
     "solidtime",

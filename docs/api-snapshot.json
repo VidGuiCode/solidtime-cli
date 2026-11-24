@@ -1,0 +1,438 @@
+{
+  "upstream": "solidtime-io/solidtime",
+  "branch": "main",
+  "routes": [
+    "DELETE /organizations/{organization}",
+    "DELETE /organizations/{organization}/clients/{client}",
+    "DELETE /organizations/{organization}/goals/{goal}",
+    "DELETE /organizations/{organization}/invitations/{invitation}",
+    "DELETE /organizations/{organization}/members/{member}",
+    "DELETE /organizations/{organization}/project-members/{projectMember}",
+    "DELETE /organizations/{organization}/projects/{project}",
+    "DELETE /organizations/{organization}/reports/{report}",
+    "DELETE /organizations/{organization}/tags/{tag}",
+    "DELETE /organizations/{organization}/tasks/{task}",
+    "DELETE /organizations/{organization}/time-entries",
+    "DELETE /organizations/{organization}/time-entries/{timeEntry}",
+    "DELETE /users/me/api-tokens/{apiToken}",
+    "DELETE /users/{user}",
+    "GET /currencies",
+    "GET /organizations/{organization}",
+    "GET /organizations/{organization}/charts/daily-tracked-hours",
+    "GET /organizations/{organization}/charts/last-seven-days",
+    "GET /organizations/{organization}/charts/latest-tasks",
+    "GET /organizations/{organization}/charts/latest-team-activity",
+    "GET /organizations/{organization}/charts/total-weekly-billable-amount",
+    "GET /organizations/{organization}/charts/total-weekly-billable-time",
+    "GET /organizations/{organization}/charts/total-weekly-time",
+    "GET /organizations/{organization}/charts/weekly-history",
+    "GET /organizations/{organization}/charts/weekly-project-overview",
+    "GET /organizations/{organization}/clients",
+    "GET /organizations/{organization}/goals",
+    "GET /organizations/{organization}/goals/{goal}",
+    "GET /organizations/{organization}/importers",
+    "GET /organizations/{organization}/invitations",
+    "GET /organizations/{organization}/members",
+    "GET /organizations/{organization}/projects",
+    "GET /organizations/{organization}/projects/{project}",
+    "GET /organizations/{organization}/projects/{project}/project-members",
+    "GET /organizations/{organization}/reports",
+    "GET /organizations/{organization}/reports/{report}",
+    "GET /organizations/{organization}/tags",
+    "GET /organizations/{organization}/tasks",
+    "GET /organizations/{organization}/time-entries",
+    "GET /organizations/{organization}/time-entries/aggregate",
+    "GET /organizations/{organization}/time-entries/aggregate/export",
+    "GET /organizations/{organization}/time-entries/export",
+    "GET /public/reports",
+    "GET /time-zones",
+    "GET /users/me",
+    "GET /users/me/api-tokens",
+    "GET /users/me/memberships",
+    "GET /users/me/time-entries/active",
+    "PATCH /organizations/{organization}/time-entries",
+    "POST /organizations",
+    "POST /organizations/{organization}/clients",
+    "POST /organizations/{organization}/export",
+    "POST /organizations/{organization}/goals",
+    "POST /organizations/{organization}/import",
+    "POST /organizations/{organization}/invitations",
+    "POST /organizations/{organization}/invitations/{invitation}/resend",
+    "POST /organizations/{organization}/member/{member}/merge-into",
+    "POST /organizations/{organization}/members/{member}/invite-placeholder",
+    "POST /organizations/{organization}/members/{member}/make-placeholder",
+    "POST /organizations/{organization}/projects",
+    "POST /organizations/{organization}/projects/{project}/project-members",
+    "POST /organizations/{organization}/reports",
+    "POST /organizations/{organization}/tags",
+    "POST /organizations/{organization}/tasks",
+    "POST /organizations/{organization}/time-entries",
+    "POST /users/me/api-tokens",
+    "POST /users/me/api-tokens/{apiToken}/revoke",
+    "POST /users/{user}/resend-email-verification",
+    "POST /users/{user}/reset-pending-email",
+    "PUT /organizations/{organization}",
+    "PUT /organizations/{organization}/clients/{client}",
+    "PUT /organizations/{organization}/goals/{goal}",
+    "PUT /organizations/{organization}/members/{member}",
+    "PUT /organizations/{organization}/project-members/{projectMember}",
+    "PUT /organizations/{organization}/projects/{project}",
+    "PUT /organizations/{organization}/reports/{report}",
+    "PUT /organizations/{organization}/tags/{tag}",
+    "PUT /organizations/{organization}/tasks/{task}",
+    "PUT /organizations/{organization}/time-entries/{timeEntry}",
+    "PUT /users/me/current-organization",
+    "PUT /users/{user}"
+  ],
+  "requests": {
+    "ApiToken/ApiTokenStoreRequest.php": [
+      "name"
+    ],
+    "Client/ClientIndexRequest.php": [
+      "archived",
+      "page"
+    ],
+    "Client/ClientStoreRequest.php": [
+      "name"
+    ],
+    "Client/ClientUpdateRequest.php": [
+      "is_archived",
+      "name"
+    ],
+    "Goal/GoalFilterRules.php": [
+      "filters",
+      "filters.billable",
+      "filters.client_ids",
+      "filters.client_ids.*",
+      "filters.member_ids",
+      "filters.member_ids.*",
+      "filters.project_ids",
+      "filters.project_ids.*",
+      "filters.tag_ids",
+      "filters.tag_ids.*",
+      "filters.tag_match_type",
+      "filters.task_ids",
+      "filters.task_ids.*",
+      "filters.time_entry_type"
+    ],
+    "Goal/GoalIndexRequest.php": [
+      "archived",
+      "page",
+      "type"
+    ],
+    "Goal/GoalStoreRequest.php": [
+      "comparison",
+      "member_id",
+      "name",
+      "period",
+      "target_seconds",
+      "timezone",
+      "type",
+      "week_start"
+    ],
+    "Goal/GoalUpdateRequest.php": [
+      "comparison",
+      "is_archived",
+      "member_id",
+      "name",
+      "period",
+      "target_seconds",
+      "timezone",
+      "type",
+      "week_start"
+    ],
+    "Import/ImportRequest.php": [
+      "data",
+      "type"
+    ],
+    "Invitation/InvitationIndexRequest.php": [
+      "page"
+    ],
+    "Invitation/InvitationStoreRequest.php": [
+      "email",
+      "role"
+    ],
+    "Member/MemberDestroyRequest.php": [
+      "delete_related"
+    ],
+    "Member/MemberIndexRequest.php": [
+      "page"
+    ],
+    "Member/MemberMergeIntoRequest.php": [
+      "member_id"
+    ],
+    "Member/MemberUpdateRequest.php": [
+      "billable_rate",
+      "role"
+    ],
+    "Organization/OrganizationDestroyRequest.php": [],
+    "Organization/OrganizationStoreRequest.php": [
+      "name"
+    ],
+    "Organization/OrganizationUpdateRequest.php": [
+      "billable_rate",
+      "breaks_enabled",
+      "currency",
+      "currency_format",
+      "date_format",
+      "employees_can_manage_tasks",
+      "employees_can_see_billable_rates",
+      "interval_format",
+      "name",
+      "number_format",
+      "prevent_overlapping_time_entries",
+      "time_format"
+    ],
+    "Project/ProjectIndexRequest.php": [
+      "archived",
+      "page"
+    ],
+    "Project/ProjectStoreRequest.php": [
+      "billable_rate",
+      "client_id",
+      "color",
+      "estimated_time",
+      "is_billable",
+      "is_public",
+      "name"
+    ],
+    "Project/ProjectUpdateRequest.php": [
+      "billable_rate",
+      "client_id",
+      "color",
+      "estimated_time",
+      "is_archived",
+      "is_billable",
+      "is_public",
+      "name"
+    ],
+    "ProjectMember/ProjectMemberIndexRequest.php": [
+      "page"
+    ],
+    "ProjectMember/ProjectMemberStoreRequest.php": [
+      "billable_rate",
+      "member_id"
+    ],
+    "ProjectMember/ProjectMemberUpdateRequest.php": [
+      "billable_rate"
+    ],
+    "Report/ReportIndexRequest.php": [
+      "page"
+    ],
+    "Report/ReportStoreRequest.php": [
+      "description",
+      "is_public",
+      "name",
+      "properties",
+      "properties.active",
+      "properties.billable",
+      "properties.client_ids",
+      "properties.client_ids.*",
+      "properties.end",
+      "properties.group",
+      "properties.history_group",
+      "properties.member_ids",
+      "properties.member_ids.*",
+      "properties.project_ids",
+      "properties.project_ids.*",
+      "properties.rounding_minutes",
+      "properties.rounding_type",
+      "properties.start",
+      "properties.sub_group",
+      "properties.tag_ids",
+      "properties.tag_ids.*",
+      "properties.tag_match_type",
+      "properties.task_ids",
+      "properties.task_ids.*",
+      "properties.time_entry_type",
+      "properties.timezone",
+      "properties.week_start",
+      "public_until"
+    ],
+    "Report/ReportUpdateRequest.php": [
+      "description",
+      "is_public",
+      "name",
+      "public_until"
+    ],
+    "Tag/TagIndexRequest.php": [
+      "page"
+    ],
+    "Tag/TagStoreRequest.php": [
+      "name"
+    ],
+    "Tag/TagUpdateRequest.php": [
+      "name"
+    ],
+    "Task/TaskIndexRequest.php": [
+      "done",
+      "page",
+      "project_id"
+    ],
+    "Task/TaskStoreRequest.php": [
+      "estimated_time",
+      "name",
+      "project_id"
+    ],
+    "Task/TaskUpdateRequest.php": [
+      "estimated_time",
+      "is_done",
+      "name"
+    ],
+    "TimeEntry/TimeEntryAggregateExportRequest.php": [
+      "active",
+      "billable",
+      "client_ids",
+      "client_ids.*",
+      "debug",
+      "end",
+      "fill_gaps_in_time_groups",
+      "format",
+      "group",
+      "history_group",
+      "member_id",
+      "member_ids",
+      "member_ids.*",
+      "project_ids",
+      "project_ids.*",
+      "rounding_minutes",
+      "rounding_type",
+      "start",
+      "sub_group",
+      "tag_ids",
+      "tag_ids.*",
+      "tag_match_type",
+      "task_ids",
+      "task_ids.*",
+      "type",
+      "user_id"
+    ],
+    "TimeEntry/TimeEntryAggregateRequest.php": [
+      "active",
+      "billable",
+      "client_ids",
+      "client_ids.*",
+      "end",
+      "fill_gaps_in_time_groups",
+      "group",
+      "member_id",
+      "member_ids",
+      "member_ids.*",
+      "project_ids",
+      "project_ids.*",
+      "rounding_minutes",
+      "rounding_type",
+      "start",
+      "sub_group",
+      "tag_ids",
+      "tag_ids.*",
+      "tag_match_type",
+      "task_ids",
+      "task_ids.*",
+      "type",
+      "user_id"
+    ],
+    "TimeEntry/TimeEntryDestroyMultipleRequest.php": [
+      "ids",
+      "ids.*"
+    ],
+    "TimeEntry/TimeEntryIndexExportRequest.php": [
+      "active",
+      "billable",
+      "client_ids",
+      "client_ids.*",
+      "debug",
+      "end",
+      "format",
+      "limit",
+      "member_id",
+      "member_ids",
+      "member_ids.*",
+      "only_full_dates",
+      "project_ids",
+      "project_ids.*",
+      "rounding_minutes",
+      "rounding_type",
+      "start",
+      "tag_ids",
+      "tag_ids.*",
+      "tag_match_type",
+      "task_ids",
+      "task_ids.*",
+      "type"
+    ],
+    "TimeEntry/TimeEntryIndexRequest.php": [
+      "active",
+      "billable",
+      "client_ids",
+      "client_ids.*",
+      "end",
+      "limit",
+      "member_id",
+      "member_ids",
+      "member_ids.*",
+      "offset",
+      "only_full_dates",
+      "project_ids",
+      "project_ids.*",
+      "rounding_minutes",
+      "rounding_type",
+      "start",
+      "tag_ids",
+      "tag_ids.*",
+      "tag_match_type",
+      "task_ids",
+      "task_ids.*",
+      "type"
+    ],
+    "TimeEntry/TimeEntryStoreRequest.php": [
+      "billable",
+      "description",
+      "end",
+      "member_id",
+      "project_id",
+      "start",
+      "tags",
+      "tags.*",
+      "task_id",
+      "type"
+    ],
+    "TimeEntry/TimeEntryUpdateMultipleRequest.php": [
+      "changes",
+      "changes.billable",
+      "changes.description",
+      "changes.member_id",
+      "changes.project_id",
+      "changes.tags",
+      "changes.tags.*",
+      "changes.task_id",
+      "changes.type",
+      "ids",
+      "ids.*"
+    ],
+    "TimeEntry/TimeEntryUpdateRequest.php": [
+      "billable",
+      "description",
+      "end",
+      "member_id",
+      "project_id",
+      "start",
+      "tags",
+      "tags.*",
+      "task_id",
+      "type"
+    ],
+    "User/UserDestroyRequest.php": [],
+    "User/UserUpdateCurrentOrganizationRequest.php": [
+      "organization_id"
+    ],
+    "User/UserUpdateRequest.php": [
+      "email",
+      "name",
+      "photo",
+      "send_time_entry_still_running_email",
+      "timezone",
+      "week_start"
+    ]
+  }
+}

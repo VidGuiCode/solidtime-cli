@@ -23,6 +23,12 @@ For development with Bun: `bun src/cli.ts`
 | `npm run format` | Format `src/` and `tests/` with Prettier |
 | `npm run format:check` | Check Prettier formatting |
 | `npm run verify-pack` | Pack and smoke test |
+| `npm run api-drift` | Compare upstream Solidtime routes and request fields against `docs/api-snapshot.json` |
+| `npm run api-drift:update` | Refresh `docs/api-snapshot.json` from upstream `solidtime-io/solidtime` |
+
+## Upstream API drift
+
+`scripts/api-drift.mjs` parses `routes/api.php` and `app/Http/Requests/V1/**/*.php` from `solidtime-io/solidtime` (`main`) and diffs them against `docs/api-snapshot.json`. A weekly GitHub Actions workflow runs `npm run api-drift` and fails on drift so new upstream routes or validation fields are caught early.
 
 ## Architecture
 

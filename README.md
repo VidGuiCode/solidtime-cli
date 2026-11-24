@@ -120,7 +120,7 @@ solidtime te list --limit 100 --offset 50     # pagination
 | Command | Description |
 |---------|-------------|
 | `upgrade` | Check for updates and self-upgrade |
-| `completion bash\|zsh\|fish` | Generate shell completions |
+| `completion bash\|zsh\|fish\|powershell` | Generate shell completions |
 
 ### Aliases
 

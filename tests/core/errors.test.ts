@@ -38,6 +38,24 @@ describe("getExitCode", () => {
   it("returns 1 for non-error values", () => {
     expect(getExitCode("string error")).toBe(1);
   });
+
+  it("returns 3 for known Solidtime 0.22 API error keys", () => {
+    for (const key of [
+      "time_entry_still_running",
+      "time_entry_can_not_be_restarted",
+      "time_entry_member_can_not_be_changed_while_running",
+      "overlapping_time_entry",
+      "feature_is_not_available_in_free_plan",
+    ]) {
+      const err = new SolidtimeApiError(400, "error", "POST", "time-entries", {}, key);
+      expect(getExitCode(err)).toBe(3);
+    }
+  });
+
+  it("returns 1 for unknown API error keys", () => {
+    const err = new SolidtimeApiError(400, "error", "POST", "time-entries", {}, "some_other_key");
+    expect(getExitCode(err)).toBe(1);
+  });
 });
 
 describe("getErrorMessage", () => {
@@ -58,6 +76,48 @@ describe("getErrorMessage", () => {
     const err = new SolidtimeApiError(404, "Not found", "GET", "organizations/x/projects/y");
     const msg = getErrorMessage(err);
     expect(msg).toContain("solidtime project list");
+  });
+
+  it("maps time_entry_still_running with active ID", () => {
+    const err = new SolidtimeApiError(
+      400,
+      "{}",
+      "POST",
+      "time-entries",
+      { active_time_entry_id: "entry-123" },
+      "time_entry_still_running",
+    );
+    expect(getErrorMessage(err)).toBe(
+      "A timer is already running (entry-123), stop it with `te stop`",
+    );
+  });
+
+  it("maps all known 0.22 API error keys to clear one-line messages", () => {
+    const cases: Array<[string, string]> = [
+      ["time_entry_still_running", "timer is already running"],
+      ["time_entry_can_not_be_restarted", "cannot be restarted"],
+      ["time_entry_member_can_not_be_changed_while_running", "Cannot change the member"],
+      ["overlapping_time_entry", "overlaps an existing entry"],
+      ["feature_is_not_available_in_free_plan", "not available on the current Solidtime plan"],
+    ];
+    for (const [key, expected] of cases) {
+      const err = new SolidtimeApiError(400, "{}", "POST", "time-entries", {}, key);
+      const msg = getErrorMessage(err);
+      expect(msg).toContain(expected);
+      expect(msg).not.toContain("\n");
+    }
+  });
+
+  it("falls back to raw message for unknown API error keys", () => {
+    const err = new SolidtimeApiError(
+      400,
+      "raw failure",
+      "POST",
+      "time-entries",
+      {},
+      "unknown_key",
+    );
+    expect(getErrorMessage(err)).toBe("API error 400: raw failure");
   });
 
   it("returns plain message for generic errors", () => {

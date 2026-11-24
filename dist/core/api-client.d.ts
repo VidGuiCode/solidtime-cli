@@ -4,16 +4,18 @@ export interface SolidtimeClientOptions {
     retries?: number;
     retryDelay?: number;
 }
+export declare function parseApiErrorKey(errorText: string): string | undefined;
 export declare class SolidtimeApiError extends Error {
     readonly status: number;
     readonly method?: string | undefined;
     readonly path?: string | undefined;
     readonly details?: unknown | undefined;
-    constructor(status: number, message: string, method?: string | undefined, path?: string | undefined, details?: unknown | undefined);
+    readonly key?: string | undefined;
+    constructor(status: number, message: string, method?: string | undefined, path?: string | undefined, details?: unknown | undefined, key?: string | undefined);
 }
 export declare class SolidtimeApiRateLimitError extends SolidtimeApiError {
     readonly retryAfter: number | null;
-    constructor(status: number, message: string, retryAfter: number | null, method?: string, path?: string, details?: unknown);
+    constructor(status: number, message: string, retryAfter: number | null, method?: string, path?: string, details?: unknown, key?: string);
 }
 /** True when a failed request may still have been processed by the server:
  * a 5xx response, or a connection drop after the request was sent. Callers
@@ -32,6 +34,7 @@ export declare class SolidtimeApiClient {
     private sleep;
     private calculateDelay;
     private isRetryableError;
+    private createApiError;
     private fetchWithRetry;
     get<T>(path: string): Promise<T>;
     post<T>(path: string, body: unknown): Promise<T>;
